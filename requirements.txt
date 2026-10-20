@@ -1,0 +1,13 @@
+# AUDITORIA SOLID (dependencias): cada libreria cubre una sola responsabilidad (SRP).
+# Cliente/servidor del protocolo MCP; se fija <2 porque la v2 elimina FastMCP y rompe server.py.
+mcp>=1.2.0,<2
+# Cliente HTTP sincronico (lo usa client.py para hablar con Ollama).
+requests>=2.31.0
+# Framework web ASGI (rutas y respuestas de web_server.py).
+starlette>=0.36.0
+# Servidor que ejecuta la app Starlette.
+uvicorn>=0.28.0
+# Cliente HTTP asincrono (lo usa web_server.py para hablar con Ollama).
+httpx>=0.27.0
+# Soporte WebSocket para uvicorn (ruta /ws/chat).
+websockets>=12.0

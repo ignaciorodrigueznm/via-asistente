@@ -1,0 +1,16 @@
+{
+  "saludos": [
+    "Hola, soy VÍA",
+    "Bienvenido a VÍA",
+    "Hola, ¿cómo estás?",
+    "Qué bueno verte por acá"
+  ],
+  "titulo": "Comencemos. ¿Qué quieres saber sobre la historia de Las Varillas?",
+  "placeholder": "Pregúntale a VÍA sobre Las Varillas",
+  "sugerencias": [
+    "¿A qué postura suscribe el Arq. Valter Dabbene?",
+    "¿Qué afirma el Centro de Estudios Parada KM 81?",
+    "Dame un resumen de las tres teorías fundacionales",
+    "¿Qué ocurrió en 1904?"
+  ]
+}

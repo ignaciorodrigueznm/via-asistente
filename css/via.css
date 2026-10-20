@@ -1,0 +1,955 @@
+/* ==========================================================================
+   VÍA · Asistente virtual de la historia de Las Varillas
+   Interfaz minimalista. Paleta tomada de la bandera de Las Varillas.
+   ========================================================================== */
+
+/* ==========================================================================
+   AUDITORÍA SOLID (CSS)
+   Los principios SOLID son de programación orientada a objetos: en CSS no se
+   aplican literalmente, pero este archivo sigue sus equivalentes:
+   - SRP: cada bloque estiliza UN componente (logo, barra, mensajes, libro, historial).
+   - OCP: los colores, radios, sombras y tipografía están en variables (:root);
+          se cambia el diseño editando variables sin tocar los componentes.
+   - LSP/ISP: las variantes (--lg, --soft, --icon, --mode) extienden a su base
+          (.via-mark, .btn) sin romperla; cada componente lleva solo sus reglas.
+   - DIP: los componentes dependen de variables abstractas (var(--blue)), no de
+          valores fijos de color.
+   No se modificó NINGUNA regla: solo se agregaron estos comentarios.
+   ========================================================================== */
+
+/* [OCP/DIP] Tokens de diseño: todo el aspecto sale de estas variables. */
+:root {
+  /* Le indica al navegador que la interfaz usa tema claro. */
+  color-scheme: light;
+  /* Ancho del libro cuando está anclado (entre 360 px y 480 px). */
+  --dock-w: clamp(360px, 34vw, 480px);
+  /* Paleta de la bandera de Las Varillas */
+  /* Celeste de la bandera (decorativo). */
+  --sky: #00AFF0;           /* celeste de la bandera (decorativo) */
+  /* Azul de acento principal. */
+  --blue: #0088CE;          /* acento principal */
+  /* Azul para texto (contraste accesible). */
+  --blue-ink: #006FA8;      /* azul para texto (contraste AA) */
+  /* Azul muy claro (fondos suaves). */
+  --blue-50: #D3EAF6;
+  /* Azul claro (bordes y hover). */
+  --blue-100: #BDDFF1;
+  /* Amarillo de acento. */
+  --yellow: #F2C94C;        /* amarillo de acento */
+  /* Ámbar (puntos de las fuentes). */
+  --amber: #F8A01B;
+  /* Amarillo muy claro (fondos). */
+  --yellow-50: #FFF0BE;
+  /* Amarillo claro (bordes y etiquetas). */
+  --yellow-100: #FBE08A;
+  /* Gris del engranaje de la bandera. */
+  --gray-flag: #BEBFC1;     /* gris del engranaje */
+
+  /* Superficies: sin blanco puro para no cansar la vista */
+  /* Fondo general de la app. */
+  --bg: #E6F2F8;            /* fondo: celeste suave */
+  /* Superficie de tarjetas y paneles. */
+  --surface: #FDF8EA;       /* tarjetas, caja de entrada, panel: crema cálido */
+  /* Fondo de la burbuja del usuario. */
+  --bubble: #C9E6F6;
+  /* Borde de la burbuja del usuario. */
+  --bubble-line: #A8D4EB;
+
+  /* Neutros */
+  /* Color principal del texto. */
+  --ink: #1A1D20;
+  /* Color de texto secundario. */
+  --muted: #5F6A73;
+  /* Color de bordes y separadores. */
+  --line: #C9DCE7;
+  /* Gris azulado suave (hover y fondos). */
+  --soft: #D9E8F1;
+
+  /* Forma */
+  /* Radio de esquina pequeño. */
+  --r-sm: 12px;
+  /* Radio de esquina mediano. */
+  --r-md: 18px;
+  /* Radio de esquina grande. */
+  --r-lg: 28px;
+  /* Sombra suave. */
+  --shadow-1: 0 1px 2px rgba(26, 29, 32, .04), 0 1px 6px rgba(26, 29, 32, .04);
+  /* Sombra media. */
+  --shadow-2: 0 2px 4px rgba(26, 29, 32, .04), 0 10px 30px rgba(0, 94, 143, .08);
+  /* Sombra profunda (paneles flotantes). */
+  --shadow-3: 0 12px 48px rgba(26, 29, 32, .16);
+
+  /* Curva de animación común a toda la interfaz. */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  /* Familia tipográfica con alternativas del sistema. */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Reinicio: el tamaño incluye bordes y relleno en todos los elementos. */
+*, *::before, *::after { box-sizing: border-box; }
+/* La página ocupa toda la altura de la ventana. */
+html, body { height: 100%; }
+/* Estilo base del documento: tipografía, color y fondo. */
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* Botones y cajas de texto heredan la fuente y el color. */
+button, textarea { font: inherit; color: inherit; }
+/* Cursor de mano en los botones. */
+button { cursor: pointer; }
+/* Todo elemento con atributo hidden queda oculto (aunque otra regla lo muestre). */
+[hidden] { display: none !important; }
+/* Texto solo para lectores de pantalla (invisible a la vista). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+/* Anillo de foco visible al navegar con teclado (accesibilidad). */
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+/* ==========================================================================
+   Logo VÍA
+   Los SVG traen margen interno; se recortan con CSS para que el engranaje
+   ocupe todo el contenedor. Ajusta --zoom / --cx / --cy si cambias el logo.
+   ========================================================================== */
+/* [SRP] Logo VÍA: contenedor cuadrado que recorta el margen interno del SVG. */
+.via-mark {
+  --size: 32px;
+  --zoom: 1.6;
+  --cx: .521;   /* centro horizontal del engranaje dentro del lienzo (0-1) */
+  --cy: .455;   /* centro vertical (0-1) */
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  overflow: hidden;
+}
+/* Las dos capas del logo se apilan ocupando todo el contenedor. */
+.via-mark__spin, .via-mark__hub { position: absolute; inset: 0; }
+/* Capa del engranaje: es la que gira desde JavaScript. */
+.via-mark__spin { will-change: transform; transform-origin: 50% 50%; }
+/* El buje (círculo central con el tren) queda quieto mientras el engranaje gira */
+/* Capa del buje central: recortada en círculo para quedar quieta. */
+.via-mark__hub { clip-path: circle(19.8% at 50% 50%); pointer-events: none; }
+/* Imagen del logo ampliada y centrada con las variables --zoom/--cx/--cy. */
+.via-mark img {
+  position: absolute;
+  width: calc(var(--zoom) * 100%);
+  height: calc(var(--zoom) * 100%);
+  left: calc((.5 - var(--cx) * var(--zoom)) * 100%);
+  top: calc((.5 - var(--cy) * var(--zoom)) * 100%);
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* [OCP/LSP] Variante grande del logo (extiende .via-mark sin modificarlo). */
+.via-mark--lg { --size: 56px; }
+
+/* ==========================================================================
+   Layout general
+   ========================================================================== */
+/* Contenedor principal: columna a pantalla completa con degradados decorativos. */
+.app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(1000px 520px at 15% -140px, rgba(0, 175, 240, .20), transparent 70%),
+    radial-gradient(800px 420px at 95% 105%, rgba(255, 204, 42, .22), transparent 70%),
+    var(--bg);
+}
+
+/* ---------- Barra superior ---------- */
+/* Barra superior: logo a la izquierda, botones a la derecha. */
+.topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+}
+/* Enlace de la marca (logo + nombre). */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--r-md);
+}
+/* Columna con nombre y lema. */
+.brand__text { display: flex; flex-direction: column; line-height: 1.15; }
+/* Nombre 'VÍA'. */
+.brand__name { font-size: 22px; font-weight: 700; letter-spacing: .04em; }
+/* Lema 'Historia de Las Varillas'. */
+.brand__tag { font-size: 12.5px; color: var(--muted); }
+
+/* Grupo de botones de la barra superior. */
+.topbar__actions { display: flex; align-items: center; gap: 8px; }
+
+/* [SRP] Base de todos los botones redondeados. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 999px;
+  transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
+}
+/* [OCP] Variante: botón suave con texto (Historial / Libro). */
+.btn--soft {
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--blue-ink);
+  background: var(--blue-50);
+}
+/* Hover del botón suave. */
+.btn--soft:hover { background: var(--blue-100); }
+/* [OCP] Variante: botón circular solo con ícono. */
+.btn--icon { width: 42px; height: 42px; color: var(--muted); }
+/* Hover del botón de ícono. */
+.btn--icon:hover { background: var(--soft); color: var(--ink); }
+
+/* ---------- Escenario ---------- */
+/* Escenario central: ocupa el espacio restante y centra su contenido. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---------- Saludo central ---------- */
+/* Bloque de saludo inicial (animación de entrada). */
+.hero {
+  width: 100%;
+  max-width: 760px;
+  padding: 0 24px;
+  text-align: center;
+  animation: rise .6s var(--ease) both;
+}
+/* Saludo corto sobre el título. */
+.hero__greeting {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 600;
+  color: var(--blue);
+}
+/* Título grande de bienvenida. */
+.hero__title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 44px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  text-wrap: balance;
+}
+
+/* ---------- Conversación ---------- */
+/* Zona de conversación con scroll propio. */
+.thread {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  outline: none;
+}
+/* Columna centrada que contiene los mensajes. */
+.thread__inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Todo mensaje aparece con la animación 'rise'. */
+.msg { animation: rise .35s var(--ease) both; }
+
+/* Mensaje del usuario: alineado a la derecha. */
+.msg--user { align-self: flex-end; max-width: min(85%, 560px); }
+/* Burbuja celeste del usuario. */
+.msg--user .msg__bubble {
+  background: var(--bubble);
+  border: 1px solid var(--bubble-line);
+  padding: 11px 18px;
+  border-radius: 22px 22px 6px 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Mensaje de VÍA: logo a la izquierda y contenido a la derecha. */
+.msg--bot { display: flex; gap: 14px; align-items: flex-start; }
+/* Tamaño del logo dentro de los mensajes de VÍA. */
+.msg--bot .via-mark { --size: 34px; margin-top: 2px; }
+/* Columna principal del mensaje de VÍA. */
+.msg__main { min-width: 0; flex: 1; }
+
+/* Texto formateado de la respuesta */
+/* [SRP] Texto formateado de la respuesta. */
+.prose { overflow-wrap: anywhere; }
+/* Sin margen superior en el primer elemento. */
+.prose > :first-child { margin-top: 0; }
+/* Sin margen inferior en el último elemento. */
+.prose > :last-child { margin-bottom: 0; }
+/* Párrafos. */
+.prose p { margin: 0 0 .85em; }
+/* Títulos dentro de la respuesta. */
+.prose h3, .prose h4 { margin: 1.2em 0 .4em; line-height: 1.3; font-weight: 600; }
+/* Tamaño de h3. */
+.prose h3 { font-size: 1.1em; }
+/* Tamaño de h4. */
+.prose h4 { font-size: 1em; }
+/* Listas con sangría. */
+.prose ul, .prose ol { margin: 0 0 .85em; padding-left: 1.3em; }
+/* Ítems de lista. */
+.prose li { margin: .25em 0; }
+/* Viñetas en azul. */
+.prose li::marker { color: var(--blue); }
+/* Negrita semipesada. */
+.prose strong { font-weight: 600; }
+/* Código en línea con fondo gris. */
+.prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9em;
+  background: var(--soft);
+  padding: .12em .4em;
+  border-radius: 6px;
+}
+
+/* Fuentes (llevan al libro) */
+/* Fila de fuentes bajo la respuesta. */
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+/* Etiqueta 'Fuentes'. */
+.sources__label { font-size: 12.5px; color: var(--muted); margin-right: 2px; }
+/* Botón de fuente (amarillo, redondeado). */
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--yellow-50);
+  border: 1px solid var(--yellow-100);
+  border-radius: 999px;
+  transition: background .18s var(--ease), border-color .18s var(--ease);
+}
+/* Puntito ámbar decorativo antes del texto. */
+.source::before {
+  content: "";
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--amber);
+}
+/* Hover de la fuente. */
+.source:hover { background: var(--yellow-100); border-color: var(--yellow); }
+
+/* Fila de acciones (copiar). */
+.actions { display: flex; gap: 4px; margin-top: 10px; margin-left: -8px; }
+/* Botón de acción discreto. */
+.action {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+}
+/* Hover de la acción. */
+.action:hover { background: var(--soft); color: var(--ink); }
+
+/* Botón 'Reintentar'. */
+.retry {
+  margin-top: 10px;
+  padding: 7px 14px;
+  font-size: 14px;
+  color: var(--blue-ink);
+  background: var(--surface);
+  border: 1px solid var(--blue-100);
+  border-radius: 999px;
+}
+/* Hover de 'Reintentar'. */
+.retry:hover { background: var(--blue-50); }
+
+/* Cursor suave mientras llegan los tokens */
+/* Puntito pulsante mientras llegan los tokens. */
+.is-streaming .prose > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--blue);
+  vertical-align: baseline;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* ---------- Skeleton ---------- */
+/* [SRP] Esqueleto de carga con brillo animado. */
+.skel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--soft);
+}
+/* Franja brillante que se desplaza. */
+.skel::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 136, 206, .09), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
+/* Contenedor de líneas de esqueleto. */
+.skel-lines { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
+/* Línea de esqueleto. */
+.skel--line { height: 14px; }
+/* Fila grande de esqueleto (libro). */
+.skel--row { height: 64px; border-radius: var(--r-md); }
+/* Lista de filas de esqueleto. */
+.skel-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Caja de entrada ---------- */
+/* Zona inferior: caja de entrada, sugerencias y nota. */
+.dock {
+  flex: none;
+  width: 100%;
+  max-width: 760px;
+  padding: 8px 20px calc(14px + env(safe-area-inset-bottom));
+}
+
+/* Caja de entrada redondeada. */
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px 8px 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+/* Resalta la caja cuando se escribe en ella. */
+.composer:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(0, 136, 206, .12), var(--shadow-2);
+}
+/* Área de texto sin bordes. */
+.composer__input {
+  flex: 1;
+  min-width: 0;
+  max-height: 200px;
+  padding: 10px 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1.5;
+}
+/* Color del texto de ayuda. */
+.composer__input::placeholder { color: var(--muted); }
+
+/* Botón circular de enviar. */
+.send {
+  flex: none;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--blue);
+  transition: background .18s var(--ease), transform .18s var(--ease), opacity .18s var(--ease);
+}
+/* Hover del botón enviar (si está habilitado). */
+.send:hover:not(:disabled) { background: var(--blue-ink); transform: translateY(-1px); }
+/* Efecto al presionar. */
+.send:active:not(:disabled) { transform: scale(.96); }
+/* Aspecto deshabilitado. */
+.send:disabled { background: #C5D3DC; color: #85939D; cursor: default; }
+
+/* Nota legal bajo la caja. */
+.dock__note {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- Sugerencias (chips) ---------- */
+/* Contenedor de sugerencias. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+/* Botón de sugerencia. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px 10px 14px;
+  font-size: 14.5px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-1);
+  animation: rise .5s var(--ease) both;
+  transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+/* Puntito amarillo decorativo. */
+.chip::before {
+  content: "";
+  flex: none;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--yellow);
+}
+/* Hover de la sugerencia. */
+.chip:hover {
+  background: var(--yellow-50);
+  border-color: var(--yellow);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+}
+/* Efecto al presionar. */
+.chip:active { transform: scale(.98); }
+
+/* ---------- Estados: vacío vs. conversación ---------- */
+/* Estado inicial: contenido centrado verticalmente. */
+.app.is-empty .stage { justify-content: center; padding-bottom: 7vh; gap: 28px; }
+/* Estado inicial: oculta la conversación. */
+.app.is-empty .thread { display: none; }
+/* Estado inicial: oculta la nota. */
+.app.is-empty .dock__note { display: none; }
+
+/* En conversación: oculta saludo y sugerencias. */
+.app:not(.is-empty) .hero,
+.app:not(.is-empty) .chips { display: none; }
+
+/* Estado inicial: sin relleno inferior. */
+.app.is-empty .dock { padding-bottom: 0; }
+
+/* ==========================================================================
+   Panel desplegable: Libro histórico
+   ========================================================================== */
+/* Fondo oscuro translúcido detrás de los paneles. */
+.scrim {
+  position: fixed; inset: 0;
+  background: rgba(26, 29, 32, .32);
+  opacity: 0;
+  transition: opacity .25s var(--ease);
+  z-index: 40;
+}
+/* Muestra el fondo oscuro. */
+.scrim.is-on { opacity: 1; }
+
+/* --- Modo FLOTANTE (por defecto): tarjeta sobre el chat, no bloquea la conversación --- */
+/* Libro histórico en modo flotante (oculto por defecto). */
+.drawer {
+  position: fixed;
+  top: 76px; right: 16px; bottom: 16px;
+  width: min(420px, calc(100vw - 32px));
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  visibility: hidden;
+  transition: transform .34s var(--ease), opacity .25s var(--ease), visibility 0s linear .34s;
+  z-index: 50;
+}
+/* Libro abierto: visible y en su lugar. */
+.drawer.is-open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition: transform .34s var(--ease), opacity .25s var(--ease);
+}
+/* Tarjeta interna del libro. */
+.drawer__panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+
+/* --- Modo ANCLADO: pantalla dividida, el chat se reduce y convive con el libro --- */
+/* Contenedor general: permite pantalla dividida. */
+.shell { display: flex; height: 100dvh; }
+/* La app se reduce para convivir con el libro anclado. */
+.shell > .app { flex: 1; min-width: 0; transition: padding-right .34s var(--ease); }
+
+/* Modo anclado: el libro se integra al layout. */
+.drawer.is-docked {
+  position: relative;
+  top: auto; right: auto; bottom: auto;
+  flex: none;
+  width: 0;
+  transform: none;
+  opacity: 1;
+  overflow: hidden;
+  z-index: auto;
+  transition: width .34s var(--ease), visibility 0s linear .34s;
+}
+/* Libro anclado y abierto: ancho completo. */
+.drawer.is-docked.is-open { width: var(--dock-w); transition: width .34s var(--ease); }
+/* Panel anclado sin bordes redondeados ni sombra. */
+.drawer.is-docked .drawer__panel {
+  width: var(--dock-w);
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Con la tarjeta flotante abierta, el chat se recentra en el espacio libre (pantallas anchas) */
+/* Pantallas anchas: recentra el chat con el libro flotante abierto. */
+@media (min-width: 1200px) {
+  /* Margen derecho para no tapar el chat. */
+  .shell.book-open:not(.is-docked) > .app { padding-right: 452px; }
+}
+
+/* Desactiva transiciones al cambiar de modo. */
+.shell.no-anim, .shell.no-anim * { transition: none !important; }
+
+/* Cabecera del libro. */
+.drawer__head {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px 16px 16px 24px;
+  border-bottom: 1px solid var(--line);
+}
+/* Botones de la cabecera del libro. */
+.drawer__tools { display: flex; align-items: center; gap: 4px; flex: none; }
+/* [OCP] Variante: botón Anclar/Flotante. */
+.btn--mode { padding: 8px 14px 8px 12px; font-size: 13.5px; font-weight: 500; color: var(--blue-ink); background: var(--blue-50); }
+/* Hover del botón de modo. */
+.btn--mode:hover { background: var(--blue-100); }
+/* Título del panel. */
+.drawer__title { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+/* Subtítulo del panel. */
+.drawer__sub { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+/* Cuerpo con scroll del libro. */
+.drawer__body { flex: 1; overflow-y: auto; padding: 16px 16px 32px; }
+
+/* Acordeones */
+/* Lista de acordeones. */
+.acc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Un acordeón. */
+.acc__item {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+/* Acordeón abierto resaltado. */
+.acc__item.is-open { border-color: var(--blue-100); box-shadow: var(--shadow-1); }
+/* Cabecera clicable del acordeón. */
+.acc__head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-md);
+}
+/* Hover de la cabecera. */
+.acc__head:hover { background: var(--soft); }
+/* Etiqueta con el año. */
+.acc__year {
+  flex: none;
+  padding: 4px 11px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #5C4300;
+  background: var(--yellow-100);
+  border-radius: 999px;
+}
+/* Textos de la cabecera. */
+.acc__label { flex: 1; min-width: 0; }
+/* Título del acordeón. */
+.acc__label strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+/* Subtítulo del acordeón. */
+.acc__label span { display: block; font-size: 13px; color: var(--muted); line-height: 1.35; }
+/* Flecha del acordeón. */
+.acc__chev { flex: none; color: var(--muted); transition: transform .25s var(--ease); }
+/* Flecha girada al abrir. */
+.acc__item.is-open .acc__chev { transform: rotate(180deg); color: var(--blue); }
+
+/* Panel desplegable con animación de altura. */
+.acc__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .3s var(--ease);
+}
+/* Panel abierto. */
+.acc__item.is-open .acc__panel { grid-template-rows: 1fr; }
+/* Recorta el contenido durante la animación. */
+.acc__panel > div { overflow: hidden; }
+/* Relleno interno del contenido. */
+.acc__content { padding: 2px 18px 18px; }
+
+/* Lista de datos clave. */
+.facts { margin: 0 0 14px; display: grid; gap: 10px; }
+/* Nombre del dato. */
+.fact dt { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--blue-ink); }
+/* Valor del dato. */
+.fact dd { margin: 2px 0 0; font-size: 14.5px; }
+/* Texto del fragmento histórico. */
+.acc__text { margin: 0 0 16px; font-size: 14.5px; line-height: 1.65; color: #343A40; }
+
+/* Botón 'Preguntar a VÍA'. */
+.ask {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px;
+  font-size: 14px; font-weight: 500;
+  color: #fff;
+  background: var(--blue-ink);
+  border: 0;
+  border-radius: 999px;
+  transition: background .18s var(--ease), transform .18s var(--ease);
+}
+/* Hover del botón. */
+.ask:hover { background: #005C8C; transform: translateY(-1px); }
+
+/* ==========================================================================
+   Animaciones
+   ========================================================================== */
+/* Animación: aparece subiendo. */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* Animación: brillo del esqueleto. */
+@keyframes shimmer { to { transform: translateX(100%); } }
+/* Animación: pulso del cursor de escritura. */
+@keyframes pulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+
+/* Accesibilidad: respeta a quien pidió menos movimiento. */
+@media (prefers-reduced-motion: reduce) {
+  /* Reduce animaciones y transiciones a casi cero. */
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+/* Móviles: ajustes de tamaño y disposición. */
+@media (max-width: 640px) {
+  /* Barra más compacta. */
+  .topbar { padding: 10px 14px; }
+  /* Logo grande algo más chico. */
+  .via-mark--lg { --size: 50px; }
+  /* Oculta el lema. */
+  .brand__tag { display: none; }
+  /* Nombre más chico. */
+  .brand__name { font-size: 20px; }
+  /* Botones solo con ícono. */
+  .btn--soft span { display: none; }
+  /* Botón suave cuadrado. */
+  .btn--soft { padding: 10px; width: 42px; height: 42px; }
+
+  /* Relleno lateral del saludo. */
+  .hero { padding: 0 20px; }
+  /* Inicio en móvil: contenido hacia abajo. */
+  .app.is-empty .stage { justify-content: flex-end; padding-bottom: 0; gap: 0; }
+  /* Saludo arriba, resto abajo. */
+  .app.is-empty .hero { margin-bottom: auto; margin-top: 12vh; }
+  /* Respeta el área segura inferior. */
+  .app.is-empty .dock { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  /* Sugerencias en una fila con scroll horizontal. */
+  .chips { margin: 0 0 16px; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 2px 20px; margin-inline: -20px; scrollbar-width: none; }
+  /* Oculta la barra de scroll. */
+  .chips::-webkit-scrollbar { display: none; }
+  /* Las sugerencias no se encogen. */
+  .chip { flex: none; }
+  /* En móvil, las sugerencias van sobre la caja de entrada */
+  /* Caja y sugerencias en columna. */
+  .app.is-empty .dock { display: flex; flex-direction: column; }
+  /* Sugerencias sobre la caja. */
+  .app.is-empty .chips { order: -1; }
+
+  /* Conversación más compacta. */
+  .thread__inner { padding: 8px 16px 20px; gap: 24px; }
+  /* Menos espacio junto al logo. */
+  .msg--bot { gap: 10px; }
+  /* Libro casi a pantalla completa. */
+  .drawer { top: 64px; right: 8px; left: 8px; bottom: 8px; width: auto; }
+  /* Historial casi a pantalla completa. */
+  .hist-panel { top: 64px; left: 8px; right: 8px; bottom: 8px; width: auto; }
+}
+
+/* ==========================================================================
+   Panel de Historial
+   ========================================================================== */
+
+/* El scrim del historial tiene z-index propio para no colisionar con el del libro */
+/* Fondo del historial con z-index propio. */
+.hist-scrim { z-index: 45; }
+
+/* [SRP] Panel de historial (entra desde la izquierda). */
+.hist-panel {
+  position: fixed;
+  top: 76px; left: 16px; bottom: 16px;
+  width: min(380px, calc(100vw - 32px));
+  transform: translateX(calc(-100% - 32px));
+  opacity: 0;
+  visibility: hidden;
+  transition: transform .34s var(--ease), opacity .25s var(--ease), visibility 0s linear .34s;
+  z-index: 55;
+}
+/* Historial abierto. */
+.hist-panel.is-open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition: transform .34s var(--ease), opacity .25s var(--ease);
+}
+
+/* Tarjeta interna del historial. */
+.hist-panel__inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+
+/* Cabecera del historial. */
+.hist-panel__head {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px 16px 16px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Cuerpo con scroll del historial. */
+.hist-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px 24px;
+}
+
+/* Lista de conversaciones */
+/* Lista de conversaciones. */
+.hist-list { display: flex; flex-direction: column; gap: 6px; }
+
+/* Mensaje de lista vacía. */
+.hist__empty {
+  margin: 24px 12px;
+  font-size: 14.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* Fila de una conversación. */
+.hist__item {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  transition: border-color .18s var(--ease), background .18s var(--ease),
+              opacity .28s var(--ease), transform .28s var(--ease);
+}
+/* Hover de la fila. */
+.hist__item:hover { background: var(--soft); border-color: var(--line); }
+/* Conversación activa. */
+.hist__item.is-active { background: var(--blue-50); border-color: var(--blue-100); }
+/* Animación de salida al eliminar. */
+.hist__item--removing { opacity: 0; transform: translateX(-12px); pointer-events: none; }
+
+/* Botón que retoma la conversación. */
+.hist__btn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 11px 10px 11px 14px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--r-md) - 1px) 0 0 calc(var(--r-md) - 1px);
+}
+/* Hover del botón. */
+.hist__btn:hover { color: var(--ink); }
+
+/* Título de la conversación (máx. 2 líneas). */
+.hist__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Fecha relativa. */
+.hist__date {
+  font-size: 12px;
+  color: var(--muted);
+}
+/* Fecha en azul si está activa. */
+.hist__item.is-active .hist__date { color: var(--blue-ink); }
+
+/* Botón eliminar (aparece al pasar el cursor). */
+.hist__del {
+  flex: none;
+  width: 36px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0 calc(var(--r-md) - 1px) calc(var(--r-md) - 1px) 0;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity .18s var(--ease), background .18s var(--ease), color .18s var(--ease);
+}
+/* Muestra el botón al pasar el cursor o enfocar. */
+.hist__item:hover .hist__del,
+.hist__item:focus-within .hist__del { opacity: 1; }
+/* Hover del botón eliminar (rojo suave). */
+.hist__del:hover { background: rgba(220, 60, 60, .1); color: #c0392b; }
+

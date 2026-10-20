@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<!--
+  AUDITORÍA SOLID (HTML): el HTML solo define la estructura (SRP). Los estilos viven en
+  css/via.css y la lógica en js/via.js. No se modificó ninguna etiqueta ni atributo:
+  solo se agregaron estos comentarios.
+-->
+<!-- Documento en español. -->
+<html lang="es">
+<!-- Cabecera: metadatos y recursos (no se muestra). -->
+<head>
+  <!-- Codificación UTF-8 (tildes y ñ). -->
+  <meta charset="UTF-8">
+  <!-- Adapta la página al ancho del dispositivo. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <!-- Título de la pestaña. -->
+  <title>VÍA · Historia de Las Varillas</title>
+  <!-- Descripción para buscadores. -->
+  <meta name="description" content="VÍA, asistente virtual sobre la historia de Las Varillas, Córdoba.">
+  <!-- Color de la barra del navegador móvil. -->
+  <meta name="theme-color" content="#E6F2F8">
+  <!-- Declara tema claro. -->
+  <meta name="color-scheme" content="light">
+
+  <!--
+    LOGO: se enlazan las dos resoluciones. El navegador elige solo la que
+    preserva la nitidez (512 px en pantallas normales, 1024 px en pantallas
+    de alta densidad). Para cambiar el logo, reemplazá los dos SVG en /assets
+    manteniendo los nombres.
+  -->
+  <!-- Ícono de la pestaña (el logo). -->
+  <link rel="icon" type="image/svg+xml" href="assets/VIA%20LOGO%20(512%20x%20512%20px).svg">
+  <!-- Precarga el logo para que aparezca sin demora. -->
+  <link rel="preload" as="image" type="image/svg+xml" href="assets/VIA%20LOGO%20(512%20x%20512%20px).svg">
+
+  <!-- Conexión anticipada a Google Fonts. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- Conexión anticipada al servidor de fuentes. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Carga la tipografía Inter. -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- [SRP] Estilos en su propio archivo (css/via.css). -->
+  <link rel="stylesheet" href="css/via.css?v=20261020">
+<!-- Fin de la cabecera. -->
+</head>
+<!-- Cuerpo visible de la página. -->
+<body>
+  <!-- Contenedor general (permite pantalla dividida con el libro). -->
+  <div id="shell" class="shell">
+  <!-- Aplicación de chat; empieza en estado vacío (bienvenida). -->
+  <div id="app" class="app is-empty">
+
+    <!-- ============ BARRA SUPERIOR ============ -->
+    <!-- Barra superior. -->
+    <header class="topbar">
+      <!-- Enlace del logo a la página de inicio. -->
+      <a class="brand" href="/" aria-label="VÍA, inicio">
+        <!-- Marca del logo en tamaño grande. -->
+        <span class="via-mark via-mark--lg" aria-hidden="true">
+          <!-- Capa del engranaje que gira al pasar el cursor. -->
+          <span class="via-mark__spin">
+            <!-- Imagen del logo (1x y 2x para pantallas nítidas). -->
+            <img
+              src="assets/VIA%20LOGO%20(512%20x%20512%20px).svg"
+              srcset="assets/VIA%20LOGO%20(512%20x%20512%20px).svg 1x, assets/VIA%20LOGO%20(1024%20x%201024%20px).svg 2x"
+              alt="" width="512" height="512" decoding="async">
+          </span>
+          <!-- Capa central que permanece quieta. -->
+          <span class="via-mark__hub">
+            <!-- Misma imagen, recortada en el centro. -->
+            <img
+              src="assets/VIA%20LOGO%20(512%20x%20512%20px).svg"
+              srcset="assets/VIA%20LOGO%20(512%20x%20512%20px).svg 1x, assets/VIA%20LOGO%20(1024%20x%201024%20px).svg 2x"
+              alt="" width="512" height="512" decoding="async">
+          </span>
+        </span>
+        <!-- Texto de la marca. -->
+        <span class="brand__text">
+          <!-- Nombre VÍA. -->
+          <span class="brand__name">VÍA</span>
+          <!-- Lema de la marca. -->
+          <span class="brand__tag">Historia de Las Varillas</span>
+        </span>
+      </a>
+
+      <!-- Botones de la barra superior. -->
+      <div class="topbar__actions">
+        <!-- Botón que abre el historial de conversaciones. -->
+        <button id="btn-history" class="btn btn--soft" type="button" aria-expanded="false" aria-controls="history-panel">
+          <!-- Ícono de reloj. -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/></svg>
+          <!-- Texto del botón. -->
+          <span>Historial</span>
+        </button>
+        <!-- Botón que abre el libro histórico. -->
+        <button id="btn-book" class="btn btn--soft" type="button" aria-expanded="false" aria-controls="drawer">
+          <!-- Ícono de libro. -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <!-- Texto del botón. -->
+          <span>Libro histórico</span>
+        </button>
+        <!-- Botón de nueva conversación (oculto hasta que haya chat). -->
+        <button id="btn-new" class="btn btn--icon" type="button" aria-label="Nueva conversación" title="Nueva conversación" hidden>
+          <!-- Ícono de lápiz. -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ ESCENARIO ============ -->
+    <!-- Escenario principal. -->
+    <main class="stage">
+
+      <!-- Saludo central (estado inicial) -->
+      <!-- Saludo central (estado inicial). -->
+      <section class="hero" id="hero" aria-live="polite">
+        <!-- Saludo (lo reemplaza JavaScript). -->
+        <p class="hero__greeting" id="hero-greeting">Hola, soy VÍA</p>
+        <!-- Título de bienvenida (lo reemplaza JavaScript). -->
+        <h1 class="hero__title" id="hero-title">Comencemos. ¿Qué quieres saber sobre la historia de Las Varillas?</h1>
+      </section>
+
+      <!-- Conversación -->
+      <!-- Conversación: zona con scroll anunciada a lectores de pantalla. -->
+      <section class="thread" id="thread" aria-label="Conversación" aria-live="polite" tabindex="-1">
+        <!-- Aquí JavaScript agrega los mensajes. -->
+        <div class="thread__inner" id="thread-inner"></div>
+      </section>
+
+      <!-- Caja de entrada + sugerencias -->
+      <!-- Zona inferior: caja de entrada y sugerencias. -->
+      <div class="dock">
+        <!-- Formulario de chat (se envía con Enter o con el botón). -->
+        <form id="chat-form" class="composer" autocomplete="off">
+          <!-- Etiqueta invisible para accesibilidad. -->
+          <label for="user-input" class="sr-only">Escribe tu pregunta</label>
+          <!-- Caja de texto (máx. 1500 caracteres). -->
+          <textarea id="user-input" class="composer__input" rows="1" maxlength="1500"
+            placeholder="Pregúntale a VÍA sobre Las Varillas"></textarea>
+          <!-- Botón de enviar (deshabilitado hasta que haya texto). -->
+          <button id="send-button" class="send" type="submit" aria-label="Enviar" disabled>
+            <!-- Ícono de flecha. -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+          </button>
+        </form>
+
+        <!-- Contenedor de preguntas sugeridas (las crea JavaScript). -->
+        <div class="chips" id="chips" role="list" aria-label="Preguntas sugeridas"></div>
+        <!-- Aviso: las respuestas pueden contener errores. -->
+        <p class="dock__note">VÍA responde con base en el libro histórico de Las Varillas y puede equivocarse.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============ PANEL DE HISTORIAL ============ -->
+  <!-- Fondo oscuro del historial. -->
+  <div id="history-scrim" class="scrim hist-scrim" hidden></div>
+  <!-- Panel lateral del historial (oculto e inactivo hasta abrirse). -->
+  <aside id="history-panel" class="hist-panel" role="complementary" aria-labelledby="history-panel-title" aria-hidden="true" inert>
+    <!-- Tarjeta interna del panel. -->
+    <div class="hist-panel__inner">
+      <!-- Cabecera del historial. -->
+      <header class="hist-panel__head">
+        <!-- Títulos del panel. -->
+        <div>
+          <!-- Título del historial. -->
+          <h2 class="drawer__title" id="history-panel-title">Conversaciones</h2>
+          <!-- Subtítulo del historial. -->
+          <p class="drawer__sub">Tus últimas sesiones guardadas</p>
+        </div>
+        <!-- Botón para cerrar el historial. -->
+        <button id="history-close" class="btn btn--icon" type="button" aria-label="Cerrar historial">
+          <!-- Ícono de X. -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+      <!-- Cuerpo con scroll. -->
+      <div class="hist-panel__body">
+        <!-- Lista de conversaciones (la dibuja JavaScript). -->
+        <div id="history-list" class="hist-list" role="list" aria-label="Conversaciones pasadas"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ LIBRO HISTÓRICO: tarjeta flotante o pantalla dividida ============ -->
+  <!-- Fondo oscuro del libro (solo en móvil). -->
+  <div id="scrim" class="scrim" hidden></div>
+  <!-- Panel del libro histórico (oculto e inactivo hasta abrirse). -->
+  <aside id="drawer" class="drawer" role="complementary" aria-labelledby="drawer-title" aria-hidden="true" inert>
+    <!-- Tarjeta interna del libro. -->
+    <div class="drawer__panel">
+      <!-- Cabecera del libro. -->
+      <header class="drawer__head">
+        <!-- Títulos del libro. -->
+        <div>
+          <!-- Título del libro. -->
+          <h2 class="drawer__title" id="drawer-title">Libro histórico</h2>
+          <!-- Subtítulo del libro. -->
+          <p class="drawer__sub">Tres miradas sobre el origen de Las Varillas</p>
+        </div>
+        <!-- Botones de la cabecera del libro. -->
+        <div class="drawer__tools">
+          <!-- Botón para anclar o soltar el libro. -->
+          <button id="drawer-mode" class="btn btn--mode" type="button">
+            <!-- Ícono de anclar. -->
+            <svg class="ico-dock" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M14.5 4v16"/></svg>
+            <!-- Ícono de flotar (oculto al inicio). -->
+            <svg class="ico-float" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="11" y="9" width="7" height="8" rx="1.5"/></svg>
+            <!-- Texto del botón (lo cambia JavaScript). -->
+            <span>Anclar</span>
+          </button>
+          <!-- Botón para cerrar el libro. -->
+          <button id="drawer-close" class="btn btn--icon" type="button" aria-label="Cerrar">
+            <!-- Ícono de X. -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </header>
+      <!-- Cuerpo con scroll del libro. -->
+      <div class="drawer__body" id="drawer-body">
+        <!-- Esqueleto de carga del libro. -->
+        <div class="skel-list" id="drawer-loading">
+          <!-- Tres filas de esqueleto. -->
+          <div class="skel skel--row"></div><div class="skel skel--row"></div><div class="skel skel--row"></div>
+        </div>
+        <!-- Lista de acordeones (la dibuja JavaScript). -->
+        <ul class="acc" id="acc" hidden></ul>
+      </div>
+    </div>
+  </aside>
+  </div><!-- /shell -->
+
+  <!-- [SRP] Lógica en su propio archivo (js/via.js). -->
+  <script src="js/via.js?v=20261020"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+[
+  {
+    "id": "teoria_1900_ferrocarril",
+    "titulo": "Teoría de 1900 - Llegada del Ferrocarril y Parada KM 81",
+    "contenido": "Esta postura historiográfica, defendida activamente por el Centro de Estudios Históricos Parada KM 81 de Las Varillas, sostiene que el 24 de diciembre de 1900 marca el verdadero origen de la localidad. En esa fecha se produjo la llegada de la primera locomotora a la estación denominada técnicamente 'Parada del Kilómetro 81' del ramal San Francisco - Villa María del Ferrocarril de Santa Fe. Los defensores de esta teoría afirman que este hito ferroviario dio nacimiento al primer asentamiento humano y organizativo permanente, constituyendo el punto de partida de la vida comunitaria varillense antes de cualquier formalidad administrativa.",
+    "tags": [
+      "1900",
+      "ferrocarril",
+      "km 81",
+      "parada km 81",
+      "estacion",
+      "locomotora",
+      "origen",
+      "centro de estudios historicos parada km 81",
+      "centro de estudios",
+      "santa fe",
+      "villa maria",
+      "san francisco",
+      "teoria",
+      "fundacion"
+    ],
+    "metadata": {
+      "criterio": "Hito ferroviario y primer asentamiento poblacional en torno a la estación",
+      "promotor": "Centro de Estudios Históricos Parada KM 81",
+      "fecha_clave": "24 de diciembre de 1900",
+      "ubicacion": "Las Varillas, Departamento San Justo, Córdoba, Argentina"
+    }
+  },
+  {
+    "id": "teoria_1903_medardo_alvarez",
+    "titulo": "Teoría de 1903 - Trazado Urbano y Donación de Tierras de José Medardo Álvarez",
+    "contenido": "Esta postura es respaldada por investigaciones del arquitecto Valter Dabbene junto al ingeniero Omar Rubiolo y otros historiadores locales. Se fundamenta en escrituras públicas y documentos oficiales: en 1903 (formalizado entre febrero y marzo) se realizó la donación de tierras por parte de don José Medardo Álvarez Luque a la Compañía del Ferrocarril Santa Fe con el propósito expreso y legal de fundar un pueblo. Asimismo, se inició la confección y posterior aprobación del plano del trazado urbano y loteo que dio origen formal a la traza de la ciudad. Dabbene sostiene que 1903 es el año de origen auténtico de Las Varillas por existir voluntad fundacional jurídica y diseño urbanístico comprobable.",
+    "tags": [
+      "1903",
+      "alvarez",
+      "medardo alvarez",
+      "jose medardo alvarez luque",
+      "valter dabbene",
+      "dabbene",
+      "omar rubiolo",
+      "rubiolo",
+      "trazado",
+      "loteo",
+      "donacion",
+      "planos",
+      "fundador",
+      "diseno urbano",
+      "teoria",
+      "fundacion"
+    ],
+    "metadata": {
+      "criterio": "Acto jurídico fundacional, donación de tierras y aprobación del plano urbanístico",
+      "promotor": "Arquitecto Valter Dabbene, Ingeniero Omar Rubiolo e historiadores locales",
+      "fecha_clave": "13 de febrero / 26 de marzo de 1903",
+      "ubicacion": "Las Varillas, Departamento San Justo, Córdoba, Argentina"
+    }
+  },
+  {
+    "id": "teoria_1904_fundacion_oficial",
+    "titulo": "Teoría de 1904 - Habilitación del Ferrocarril y Reconocimiento Administrativo",
+    "contenido": "Esta postura toma como referencia el año 1904, cuando el 15 de julio de 1904 comenzó a operar de manera regular y efectiva el servicio de trenes de pasajeros y cargas en la línea ferroviaria San Francisco - Villa María, consolidando el movimiento comercial y el flujo poblacional continuo. A partir de esa fecha, el Gobierno de la Provincia de Córdoba otorgó el reconocimiento administrativo formal a la pedanía y comenzaron a constituirse las primeras autoridades comunales e instituciones que dieron marco administrativo a la localidad de Las Varillas.",
+    "tags": [
+      "1904",
+      "reconocimiento",
+      "gobierno",
+      "oficial",
+      "comuna",
+      "tren regular",
+      "pasajeros",
+      "julio 1904",
+      "institucional",
+      "autoridades",
+      "provincia de cordoba",
+      "teoria",
+      "fundacion"
+    ],
+    "metadata": {
+      "criterio": "Habilitación efectiva del servicio ferroviario y reconocimiento gubernamental e institucional",
+      "promotor": "Decretos y registros oficiales del Gobierno de la Provincia de Córdoba",
+      "fecha_clave": "15 de julio de 1904",
+      "ubicacion": "Las Varillas, Departamento San Justo, Córdoba, Argentina"
+    }
+  }
+]
