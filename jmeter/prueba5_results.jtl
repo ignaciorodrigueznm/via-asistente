@@ -1,21 +1,21 @@
 timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
-1792679882717,8,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-1,,true,,183,160,1,1,null,0,0,8
-1792679882736,9,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-1,text,true,,27,31,1,1,null,0,0,0
-1792679884704,3,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-2,,true,,183,160,1,1,null,0,0,3
-1792679884708,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-2,text,true,,27,31,1,1,null,0,0,0
-1792679886704,4,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-3,,true,,183,160,1,1,null,0,0,4
-1792679886709,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-3,text,true,,27,31,1,1,null,0,0,0
-1792679888704,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-4,,true,,183,160,1,1,null,0,0,2
-1792679888706,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-4,text,true,,27,31,1,1,null,0,0,0
-1792679890704,4,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-5,,true,,183,160,1,1,null,0,0,4
-1792679890709,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-5,text,true,,27,31,1,1,null,0,0,0
-1792679892704,3,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-6,,true,,183,160,1,1,null,0,0,3
-1792679892707,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-6,text,true,,27,31,1,1,null,0,0,0
-1792679894716,3,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-7,,true,,183,160,1,1,null,0,0,3
-1792679894719,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-7,text,true,,27,31,1,1,null,0,0,0
-1792679896702,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-8,,true,,183,160,1,1,null,0,0,2
-1792679896705,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-8,text,true,,27,31,1,1,null,0,0,0
-1792679898702,3,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-9,,true,,183,160,1,1,null,0,0,3
-1792679898705,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-9,text,true,,27,31,1,1,null,0,0,0
-1792679900702,5,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-10,,true,,183,160,1,1,null,0,0,5
-1792679900707,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-10,text,true,,27,31,1,1,null,0,0,0
+1792682139061,12,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-1,,true,,183,160,1,1,null,0,0,12
+1792682139086,12,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-1,text,true,,27,31,1,1,null,0,0,0
+1792682141047,1,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-2,,true,,183,160,1,1,null,0,0,1
+1792682141049,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-2,text,true,,27,31,1,1,null,0,0,0
+1792682143057,1,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-3,,true,,183,160,1,1,null,0,0,1
+1792682143058,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-3,text,true,,27,31,1,1,null,0,0,0
+1792682145047,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-4,,true,,183,160,1,1,null,0,0,2
+1792682145049,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-4,text,true,,27,31,1,1,null,0,0,0
+1792682147046,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-5,,true,,183,160,1,1,null,0,0,2
+1792682147048,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-5,text,true,,27,31,1,1,null,0,0,0
+1792682149048,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-6,,true,,183,160,1,1,null,0,0,2
+1792682149050,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-6,text,true,,27,31,1,1,null,0,0,0
+1792682151047,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-7,,true,,183,160,1,1,null,0,0,2
+1792682151050,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-7,text,true,,27,31,1,1,null,0,0,0
+1792682153051,3,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-8,,true,,183,160,1,1,null,0,0,3
+1792682153054,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-8,text,true,,27,31,1,1,null,0,0,0
+1792682155045,2,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-9,,true,,183,160,1,1,null,0,0,2
+1792682155047,1,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-9,text,true,,27,31,1,1,null,0,0,0
+1792682157047,1,WebSocket Open Connection,101,Switching Protocols,Prueba 5 - 10 Usuarios (Carga) 1-10,,true,,183,160,1,1,null,0,0,1
+1792682157049,0,WebSocket Close Connection,1000,Connection closed; close reason: 'sampler requested close'.,Prueba 5 - 10 Usuarios (Carga) 1-10,text,true,,27,31,1,1,null,0,0,0
