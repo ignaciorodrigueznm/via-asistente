@@ -824,52 +824,104 @@
       if (stick) scrollToBottom(true);
     };
 
-    // Protege contra errores de red.
+    // Intenta comunicar primero por WebSocket (Plan Taller MCP)
+    let wsSuccess = false;
     try {
-      // Envía la pregunta al servidor.
-      const res = await fetch('/api/chat/stream', {
-        // Método POST.
-        method: 'POST',
-        // Cuerpo en JSON.
-        headers: { 'Content-Type': 'application/json' },
-        // Datos enviados.
-        body: JSON.stringify({ message: question, use_mcp: true })
+      wsSuccess = await new Promise((resolve) => {
+        const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${wsProto}//${location.host}/ws/chat`);
+        const timer = setTimeout(() => {
+          try { ws.close(); } catch (_) {}
+          resolve(false);
+        }, 3500);
+
+        ws.onopen = () => {
+          clearTimeout(timer);
+          ws.send(JSON.stringify({ text: question, message: question, use_mcp: true }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const evt = JSON.parse(event.data);
+            if (evt.type === 'status') {
+              if (bot.skeleton && !bot.skeleton.hidden) {
+                let st = bot.skeleton.querySelector('.skel--status');
+                if (!st) {
+                  st = document.createElement('div');
+                  st.className = 'skel--status';
+                  st.style.fontSize = '12px';
+                  st.style.color = '#94a3b8';
+                  st.style.marginTop = '6px';
+                  bot.skeleton.appendChild(st);
+                }
+                st.textContent = evt.message;
+              }
+            } else if (evt.type === 'token') {
+              if (bot.skeleton && !bot.skeleton.hidden) {
+                bot.skeleton.hidden = true;
+                bot.prose.hidden = false;
+              }
+              text += evt.token;
+              if (!raf) raf = requestAnimationFrame(paint);
+            } else if (evt.type === 'response') {
+              if (bot.skeleton && !bot.skeleton.hidden) {
+                bot.skeleton.hidden = true;
+                bot.prose.hidden = false;
+              }
+              text = evt.content;
+              paint();
+            } else if (evt.type === 'mcp_context') {
+              chunks = Array.isArray(evt.mcp?.chunks) ? evt.mcp.chunks : [];
+            } else if (evt.type === 'done') {
+              try { ws.close(); } catch (_) {}
+              resolve(true);
+            } else if (evt.type === 'error') {
+              if (!text) failed = true;
+            }
+          } catch (_) {}
+        };
+
+        ws.onerror = () => {
+          clearTimeout(timer);
+          resolve(false);
+        };
+
+        ws.onclose = () => {
+          clearTimeout(timer);
+          resolve(Boolean(text));
+        };
       });
-      // Si la respuesta es inválida, lanza error.
-      if (!res.ok || !res.body) throw new Error('http ' + res.status);
-
-      // Procesa cada evento recibido.
-      const handle = (evt) => {
-        // Evento: contexto MCP (fuentes).
-        if (evt.type === 'mcp_context') {
-          // Guarda las fuentes (o lista vacía).
-          chunks = Array.isArray(evt.mcp?.chunks) ? evt.mcp.chunks : [];
-        // Evento: nuevo fragmento de texto.
-        } else if (evt.type === 'token') {
-          // En el primer token, cambia el esqueleto por el texto.
-          if (bot.skeleton && !bot.skeleton.hidden) {
-            // Oculta el esqueleto.
-            bot.skeleton.hidden = true;
-            // Muestra el área de texto.
-            bot.prose.hidden = false;
-          }
-          // Acumula el texto.
-          text += evt.token;
-          // Programa un redibujado (una vez por cuadro).
-          if (!raf) raf = requestAnimationFrame(paint);
-        // Evento: error del servidor.
-        } else if (evt.type === 'error') {
-          // Falla solo si todavía no llegó texto.
-          failed = !text;
-        }
-      };
-
-      // Lee todo el stream entregando cada evento a `handle`.
-      await readSSE(res, handle);
-    // Si la red o el stream fallan...
     } catch (_) {
-      // ...falla solo si no llegó texto.
-      failed = !text;
+      wsSuccess = false;
+    }
+
+    // Si WebSocket no respondió o no se pudo conectar, recurre a HTTP POST /api/chat/stream
+    if (!wsSuccess && !text) {
+      try {
+        const res = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: question, use_mcp: true })
+        });
+        if (!res.ok || !res.body) throw new Error('http ' + res.status);
+        const handle = (evt) => {
+          if (evt.type === 'mcp_context') {
+            chunks = Array.isArray(evt.mcp?.chunks) ? evt.mcp.chunks : [];
+          } else if (evt.type === 'token') {
+            if (bot.skeleton && !bot.skeleton.hidden) {
+              bot.skeleton.hidden = true;
+              bot.prose.hidden = false;
+            }
+            text += evt.token;
+            if (!raf) raf = requestAnimationFrame(paint);
+          } else if (evt.type === 'error') {
+            failed = !text;
+          }
+        };
+        await readSSE(res, handle);
+      } catch (_) {
+        failed = !text;
+      }
     }
 
     // Cancela un redibujado pendiente.
@@ -950,8 +1002,8 @@
       .then((r) => r.json())
       // Guarda el índice y dibuja los acordeones.
       .then((data) => {
-        // Solo acepta listas.
-        bookIndex = Array.isArray(data) ? data : [];
+        // Acepta lista directa o data.raw (formato completo del plan MCP).
+        bookIndex = Array.isArray(data) ? data : (data && Array.isArray(data.raw) ? data.raw : []);
         // Dibuja el acordeón.
         renderAccordion();
       })

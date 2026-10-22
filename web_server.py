@@ -111,10 +111,37 @@ SYSTEM_PROMPT = (
 # Estado global del backend (se maneja en silencio; la interfaz no lo muestra)
 # Sesión MCP activa (None mientras no esté conectada).
 mcp_session: ClientSession = None
+# Lista de herramientas detectadas dinámicamente en el servidor MCP.
+mcp_tools: list = []
 # Índice del libro cargado al iniciar.
 mcp_index_str: str = ""
 # Candado para que las llamadas MCP no se pisen entre sí.
 mcp_lock = asyncio.Lock()
+
+
+# [SRP] Responsabilidad única: convertir las herramientas MCP al formato Ollama Function Calling.
+def obtener_herramientas_ollama() -> list:
+    """Convierte las herramientas MCP al formato de Function Calling que espera Ollama."""
+    herramientas = []
+    for t in mcp_tools:
+        param_schema = getattr(t, "inputSchema", None) or {
+            "type": "object",
+            "properties": {
+                "tema": {
+                    "type": "string",
+                    "description": "Término, año o ID histórico a consultar (dejar vacío para obtener el índice)."
+                }
+            }
+        }
+        herramientas.append({
+            "type": "function",
+            "function": {
+                "name": t.name,
+                "description": getattr(t, "description", "") or "Consulta la base histórica digital de Las Varillas",
+                "parameters": param_schema
+            }
+        })
+    return herramientas
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +503,13 @@ async def lifespan(app: Starlette):
         # Handshake inicial.
         await session.initialize()
 
+        # Obtiene dinámicamente las herramientas del servidor MCP.
+        try:
+            tools_resp = await session.list_tools()
+            mcp_tools = tools_resp.tools
+        except Exception:
+            mcp_tools = []
+
         # Pide el índice del libro (tema vacío).
         res_indice = await session.call_tool(HERRAMIENTA_LIBRO, arguments={"tema": ""})
         # Guarda el índice como texto.
@@ -636,6 +670,15 @@ async def fundacion_endpoint(request):
         # ...extrae el filtro de la URL con la función dedicada.
         filtro = filtro_desde_query(request.query_params)
 
+    # Si es GET y no trae parámetros de filtro, devuelve el formato completo (Plan Taller MCP)
+    if request.method == "GET" and not request.query_params:
+        data_path = os.path.join(BASE_DIR, "fundacion.json")
+        if os.path.exists(data_path):
+            with open(data_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in data])
+            return JSONResponse({"raw": data, "full_text": full_text}, status_code=200)
+
     # Contexto vacío por defecto.
     contexto = ""
     # Si hay sesión MCP...
@@ -679,8 +722,10 @@ async def fundacion_endpoint(request):
 # chat_endpoint, chat_stream_endpoint y websocket_chat_endpoint).
 def obtener_parametros_chat(body):
     """Devuelve (pregunta, use_mcp, model) a partir del cuerpo recibido."""
-    # Pregunta sin espacios sobrantes.
-    pregunta = body.get("message", "").strip()
+    if not isinstance(body, dict):
+        return "", True, MODEL
+    # Admite 'text' (workshop PDF) y 'message' (interfaz VÍA)
+    pregunta = (body.get("text") or body.get("message") or "").strip()
     # Si usar MCP (por defecto sí).
     use_mcp = body.get("use_mcp", True)
     # Modelo pedido (por defecto el configurado).
@@ -817,72 +862,153 @@ async def chat_stream_endpoint(request):
     )
 
 
-# Endpoint de chat por WebSocket.
+# Endpoint de chat por WebSocket con bucle de razonamiento (Agent Reasoning Loop).
 async def websocket_chat_endpoint(websocket: WebSocket):
-    """Chat bidireccional por WebSocket en /ws/chat (se mantiene por compatibilidad)."""
-    # Acepta la conexión.
+    """
+    Chat en tiempo real por WebSocket (/ws/chat).
+    Implementa el bucle de razonamiento de agente interactivo según el Plan del Taller MCP:
+      1. Recibe la consulta en formato {"text": "..."} o {"message": "..."}.
+      2. Emite estados en tiempo real ("Pensando...", "Consultando base histórica...").
+      3. Invoca la herramienta MCP por stdio de manera autónoma cuando el modelo lo solicita.
+      4. Envía la respuesta definitiva {"type": "response", "content": ...} y tokens compatibles.
+      5. Responde con tolerancia y cierre limpio en pruebas de carga Open/Close (JMeter).
+    """
     await websocket.accept()
-    # Protege todo el ciclo de la conexión.
+    print("[WebSocket] 🔌 Cliente conectado en /ws/chat")
+
+    # Historial de conversación de la sesión con prompt de historiador e índice resumido
+    session_messages = [
+        {
+            "role": "system",
+            "content": (
+                "Eres un historiador experto en la ciudad de Las Varillas (Córdoba, Argentina).\n"
+                "INSTRUCCIÓN CRÍTICA: El índice provisto es solo un resumen. Si el usuario pregunta por algo "
+                "que no está listado en este índice resumido, DEBES llamar a la herramienta 'consultar_fundacion_las_varillas' "
+                "usando el término o tema de la duda como parámetro 'tema' para buscar en la base histórica.\n"
+                f"ÍNDICE RESUMIDO:\n{mcp_index_str or 'Sin índice previo cargado.'}"
+            )
+        }
+    ]
+
     try:
-        # Atiende mensajes mientras la conexión siga abierta.
         while True:
-            # Espera un mensaje de texto.
             raw_data = await websocket.receive_text()
-            # Intenta interpretarlo como JSON.
+            if not raw_data or not raw_data.strip():
+                continue
+
             try:
-                # Convierte el texto en diccionario.
-                body = json.loads(raw_data)
-            # Si no es JSON válido...
+                body = json.loads(raw_data) if raw_data.strip().startswith("{") else {"text": raw_data.strip()}
             except Exception:
-                # ...avisa al cliente...
-                await websocket.send_json({"type": "error", "error": "Formato JSON inválido"})
-                # ...y espera el siguiente mensaje.
+                body = {"text": raw_data.strip()}
+
+            # Si es un ping de prueba o verificación de conexión
+            if isinstance(body, dict) and body.get("type") in ("ping", "check"):
+                await websocket.send_json({"type": "pong", "status": "connected"})
                 continue
 
-            # Extrae los parámetros con la función dedicada.
             pregunta, use_mcp, model = obtener_parametros_chat(body)
-
-            # Si la pregunta está vacía...
             if not pregunta:
-                # ...avisa al cliente...
-                await websocket.send_json({"type": "error", "error": "El mensaje no puede estar vacío"})
-                # ...y espera el siguiente mensaje.
+                await websocket.send_json({"type": "error", "message": "El mensaje no puede estar vacío"})
                 continue
 
-            # Busca contexto en el libro.
-            contexto, mcp_data = await consultar_mcp(pregunta, use_mcp)
-            # Envía el contexto MCP.
-            await websocket.send_json({"type": "mcp_context", "mcp": mcp_data})
+            session_messages.append({"role": "user", "content": pregunta})
+            ollama_tools = obtener_herramientas_ollama() if use_mcp else []
 
-            # Bandera: la respuesta terminó bien.
-            ok = True
-            # Recorre los eventos generados.
-            async for kind, value in generar_respuesta(pregunta, contexto, mcp_data.get("chunks", []), model):
-                # Si es un token...
-                if kind == "token":
-                    # ...lo envía.
-                    await websocket.send_json({"type": "token", "token": value})
-                # Si es un error...
-                else:
-                    # ...lo envía...
-                    await websocket.send_json({"type": "error", "error": value})
-                    # ...marca que no terminó bien...
-                    ok = False
-                    # ...y corta.
+            answered = False
+            # Bucle de razonamiento iterativo (hasta 5 pasos)
+            for step in range(5):
+                await websocket.send_json({"type": "status", "message": "Pensando..."})
+
+                payload = {
+                    "model": model,
+                    "messages": session_messages,
+                    "stream": False
+                }
+                if ollama_tools:
+                    payload["tools"] = ollama_tools
+
+                message = None
+                try:
+                    async with httpx.AsyncClient(timeout=300.0) as client:
+                        resp = await client.post(OLLAMA_URL, json=payload)
+                        resp.raise_for_status()
+                        res_json = resp.json()
+                        message = res_json.get("message", {})
+                except Exception as llm_err:
+                    print(f"[WebSocket] Error al contactar Ollama: {llm_err}")
+                    # Respaldo de contingencia con el libro histórico
+                    contexto, mcp_data = await consultar_mcp(pregunta, use_mcp=True)
+                    fallback_text = respuesta_desde_libro(mcp_data.get("chunks", []))
+                    if fallback_text and not fallback_text.startswith("No encontré"):
+                        content = f"(Modo Respaldo Histórico - Ollama no disponible):\n\n{fallback_text}"
+                    else:
+                        content = "Ollama no está en ejecución. Para habilitar la IA completa, ejecuta en tu terminal: 'ollama run llama3.2'."
+                    await websocket.send_json({"type": "response", "content": content})
+                    await websocket.send_json({"type": "token", "token": content})
+                    await websocket.send_json({"type": "done"})
+                    answered = True
                     break
-            # Si terminó bien...
-            if ok:
-                # ...envía el evento final.
+
+                content = message.get("content") or ""
+                tool_calls = message.get("tool_calls", [])
+
+                # Fallback: parsear JSON de herramientas si el modelo escribe la llamada en el texto
+                if not tool_calls and "name" in content and "parameters" in content:
+                    try:
+                        import re
+                        match = re.search(r"\{.*\}", content, re.DOTALL)
+                        if match:
+                            json_data = json.loads(match.group())
+                            if "name" in json_data:
+                                tool_calls = [{"function": json_data}]
+                    except Exception:
+                        pass
+
+                session_messages.append(message)
+
+                if tool_calls:
+                    for tool_call in tool_calls:
+                        fn_data = tool_call.get("function", tool_call)
+                        fn_name = fn_data.get("name", HERRAMIENTA_LIBRO)
+                        args = fn_data.get("arguments", fn_data.get("parameters", {}))
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except Exception:
+                                args = {"tema": args}
+                        tema = args.get("tema", "") if isinstance(args, dict) else str(args)
+
+                        await websocket.send_json({"type": "status", "message": "Consultando base histórica..."})
+                        print(f"[WebSocket] 🛠️ [Ejecutando herramienta MCP] {fn_name} con tema='{tema}'")
+
+                        tool_res = await llamar_herramienta_mcp(tema)
+                        session_messages.append({
+                            "role": "tool",
+                            "content": tool_res
+                        })
+                    continue
+                else:
+                    await websocket.send_json({"type": "response", "content": content})
+                    await websocket.send_json({"type": "token", "token": content})
+                    await websocket.send_json({"type": "done"})
+                    answered = True
+                    break
+
+            if not answered:
+                await websocket.send_json({
+                    "type": "response",
+                    "content": "Se alcanzó el límite de razonamiento sin obtener una respuesta concluyente."
+                })
                 await websocket.send_json({"type": "done"})
 
-    # Si el cliente se desconecta...
     except (WebSocketDisconnect, RuntimeError):
-        # ...se ignora (es normal).
-        pass
-    # Cualquier otro error...
+        print("[WebSocket] 🔌 Cliente desconectado")
     except Exception as e:
-        # ...se registra.
-        print(f"[WebSocket] {e}")
+        print(f"[WebSocket] ❌ Error en websocket: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

@@ -120,3 +120,32 @@ El sistema está optimizado para responder de forma quirúrgica a las consultas 
 3. **Consulta 3:** `Dame un resumen de las tres teorías.`
    * **Comportamiento esperado:** Recupera la totalidad de los tres fragmentos históricos (**1900, 1903 y 1904**) para que el modelo elabore la síntesis comparativa.
 4. **Salir:** Escribir `salir` para desconectar la sesión MCP y finalizar el proceso.
+
+---
+
+## ⚡ Pruebas de Carga en Apache JMeter (WebSocket Open / Close)
+
+Siguiendo el **Plan del Taller MCP (Sección 1 y 3)** y en reemplazo de las pruebas HTTP POST del informe inicial de testing, el servidor implementa el canal WebSocket en `/ws/chat`.
+
+### 1. Extensión instalada en JMeter
+Para realizar las pruebas con samplers de WebSocket Open/Close, se descargaron e instalaron los plugins oficiales en la carpeta `lib/ext` de JMeter:
+* **`jmeter-websocket-samplers-1.3.2.jar`** (Peter Doornbosch): Añade los samplers *WebSocket Open Connection*, *WebSocket Close Connection*, *WebSocket Request-Response Sampler*, *Ping/Pong*, etc.
+* **`jmeter-plugins-manager.jar`**: Gestor gráfico de plugins (menú *Options -> Plugins Manager*).
+
+### 2. Planes de prueba incluidos en la carpeta `jmeter/`
+Se generaron los planes de prueba listos para abrir en JMeter o ejecutar por consola:
+* **`jmeter/jmeter_ws_prueba4_smoke.jmx`**:
+  * **Tipo:** Smoke / Funcional (1 usuario, Ramp-up 1s, 1 iteración).
+  * **Flujo:** Open Connection (`ws://localhost:8000/ws/chat`) -> Ping (Single Request-Response) -> Close Connection.
+* **`jmeter/jmeter_ws_prueba5_carga.jmx`**:
+  * **Tipo:** Carga (10 usuarios, Ramp-up 20s, 1 iteración).
+  * **Flujo:** Open Connection -> Close Connection.
+* **`jmeter/jmeter_ws_prueba6_estres.jmx`**:
+  * **Tipo:** Estrés (1000 usuarios, Ramp-up 1s, 1 iteración).
+  * **Flujo:** Open Connection -> Close Connection.
+
+### 3. Ejecución gráfica en JMeter
+1. Inicia JMeter ejecutando `C:\Users\nacho\Downloads\apache-jmeter-5.6.3\bin\jmeter.bat`.
+2. En el menú superior: **File -> Open...** y selecciona uno de los archivos `.jmx` en la carpeta `via-asistente/jmeter/`.
+3. Haz clic en el botón verde **Start** (▶).
+4. Revisa los resultados en **Árbol de Resultados** y en el **Informe Agregado** (Throughput y 0% de errores).

@@ -156,11 +156,10 @@ No se corrigieron (no se debía cambiar nada), pero conviene saberlos. Gravedad:
 | 🟠 | **Servidor expuesto a toda la red.** | `HOST` por defecto es `0.0.0.0` y CORS permite cualquier origen (`allow_origins=["*"]`). Cualquiera en la misma red puede usar el chat y el modelo. Para uso local conviene `127.0.0.1`. |
 | 🟠 | **El cliente puede elegir el modelo.** | Los endpoints aceptan `"model"` en el JSON; alguien podría pedir cualquier modelo instalado en Ollama (consumo de recursos). Conviene limitarlo a una lista permitida. |
 | 🟠 | **Historial puede perderse sin aviso.** | `via.js` guarda en `localStorage` hasta 40 conversaciones **con los fragmentos completos del libro** en cada respuesta. Al llenarse la cuota, `saveHistory` ignora el error y no se guarda. Conviene guardar solo los `id` de las fuentes. |
-| 🟡 | **Sin límite de largo en el servidor.** | El `maxlength=1500` está solo en el HTML; el backend no valida el tamaño de `message`. |
-| 🟡 | **WebSocket frágil ante JSON no objeto.** | Si llega `[]` o `5`, `body.get` falla y se cierra la conexión (queda registrado en consola). La ruta se mantiene "por compatibilidad" y no la usa la interfaz. |
+| 🟢 | **WebSocket robusto y con Agent Loop.** | *(Resuelto)* Se integró el bucle de razonamiento autónomo interactivo del Plan MCP. Valida `isinstance(body, dict)`, admite `{"text": ...}` y `{"message": ...}`, maneja reconexión, pings, y gestiona `WebSocketDisconnect` de forma limpia para pruebas de carga Open/Close. |
 | 🟡 | **Detección de "resumen global" muy amplia.** | Cualquier consulta que contenga "resumen", "tres" o "todas" devuelve **toda** la base, aunque pregunten por algo puntual (p. ej. "resumen de lo de Dabbene"). |
 | 🟡 | **Coincidencia parcial ruidosa.** | `palabra in texto_doc` también acierta dentro de otras palabras (p. ej. "ya" dentro de "playa"), lo que puede sumar puntaje no deseado. |
-| 🟡 | **`mcp_index_str` casi sin uso.** | Se carga al iniciar y solo sirve para el campo `has_index` de `/api/status`; en la web no se inyecta al prompt (en `client.py` sí). |
+| 🟢 | **`mcp_index_str` inyectado al agente.** | *(Resuelto)* El índice histórico precargado por FastMCP al iniciar se inyecta directamente en el `System Prompt` de cada sesión WebSocket como contexto inicial. |
 | 🟡 | **Versionado manual de caché.** | `index.html` usa `?v=20261020` pero `NoCacheMiddleware` ya impide cachear: el parámetro es redundante. |
 | 🟡 | **Dependencia externa de fuentes.** | `index.html` carga Inter desde Google Fonts: sin internet cae a fuentes del sistema (funciona, pero cambia el aspecto) y hay un pedido a terceros. |
 | ⚪ | **`.gitignore` vacío.** | Conviene ignorar `venv/` y `__pycache__/`. |
