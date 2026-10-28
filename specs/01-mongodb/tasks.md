@@ -1,0 +1,23 @@
+# Tareas 01 — Persistencia en MongoDB
+
+- [x] **T1** Protocolo `BookRepository` + normalizador de tags + `FakeRepo` en memoria.
+  - Cubre: A2, A6
+  - Se comprueba con: `pytest tests/test_repository.py` ejecutándose sin MongoDB.
+- [x] **T2** `MongoBookRepository` con PyMongo e índices requeridos (único en `fragmentos.id`, `fragmentos.libro_id + orden`, `fragmentos.tags`).
+  - Cubre: A6
+  - Se comprueba con: la misma suite de tests corriendo contra `MongoBookRepository` si Mongo está disponible o con mocks.
+- [x] **T3** Script de siembra `seed_from_json.py` idempotente.
+  - Cubre: A1
+  - Se comprueba con: ejecutar el script 2 veces y verificar que el resultado permanece en 1 libro y 6 fragmentos.
+- [x] **T4** Módulo de configuración `config.py` y validación temprana con sanitización.
+  - Cubre: A5
+  - Se comprueba con: arrancar con `MONGODB_URL` inválida y verificar que no expone contraseñas en stderr/logs.
+- [x] **T5** Integración del backend `web_server.py` con el repositorio.
+  - Cubre: A3
+  - Se comprueba con: endpoints de catálogo consumiendo el repositorio y filtrando borradores.
+- [x] **T6** Integración del MCP `server.py` con vigilancia de `meta.version`.
+  - Cubre: A4
+  - Se comprueba con: recarga de fragmentos sin reiniciar proceso tras publicación.
+- [x] **T7** Creación de `.env.example` y actualización de documentación de arranque en `README.md`.
+  - Cubre: A5, Criterio general
+  - Se comprueba con: presencia de variables obligatorias sin secretos.

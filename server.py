@@ -66,19 +66,68 @@ def normalizar(texto: str) -> str:
     return texto
 
 
-# [SRP] Responsabilidad única: acceso a los datos (leer el JSON).
-# [DIP] Punto único de acceso a datos: si mañana se usa otra fuente (BD, API),
-#       solo se cambia esta función y el resto del módulo no se entera.
+# [DIP] Punto único de acceso a datos: consulta MongoBookRepository y vigila meta.version.
+# Si Mongo no está disponible, mantiene fallback a fundacion.json (Criterio A4 / 1.1).
+_repo_cache_version: int = -1
+_cached_data: list = []
+_book_repo = None
+
+
+def obtener_repo_mcp():
+    """Obtiene o inicializa el repositorio para el servidor MCP con conexión síncrona PyMongo."""
+    global _book_repo
+    if _book_repo is not None:
+        return _book_repo
+    try:
+        from pymongo import MongoClient
+        from config import settings
+        from repository import MongoBookRepository
+        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=1500)
+        client.admin.command("ping")
+        db = client[settings.MONGODB_DB]
+        _book_repo = MongoBookRepository(db)
+        return _book_repo
+    except Exception:
+        return None
+
+
 def cargar_datos():
-    """Lee el archivo JSON de fragmentos históricos."""
-    # Si el archivo no existe, devuelve lista vacía (comportamiento original).
+    """
+    Lee fragmentos desde MongoDB si está disponible y vigila meta.version (Criterio A4).
+    Si meta.version no cambió, devuelve la caché en memoria.
+    Si Mongo no está disponible, lee fundacion.json (comportamiento previo asegurado).
+    """
+    global _repo_cache_version, _cached_data
+    repo = obtener_repo_mcp()
+
+    if repo is not None:
+        try:
+            version_actual = repo.obtener_version_corpus()
+            # Si la versión no cambió y ya tenemos datos cacheados, retornar caché
+            if version_actual == _repo_cache_version and _cached_data:
+                return _cached_data
+
+            # Carga fragmentos de todos los libros publicados
+            libros_pub = repo.listar_libros(solo_publicados=True)
+            todos_frags = []
+            for l in libros_pub:
+                frags = repo.obtener_fragmentos(l["slug"])
+                todos_frags.extend(frags)
+
+            if todos_frags:
+                _repo_cache_version = version_actual
+                _cached_data = todos_frags
+                return _cached_data
+        except Exception as e:
+            # En caso de error de red puntual, continuar con fallback
+            pass
+
+    # Fallback transparente a fundacion.json
     if not os.path.exists(DATA_FILE):
-        # Lista vacía = "no hay datos".
         return []
-    # Abre el archivo en modo lectura con codificación UTF-8.
     with open(DATA_FILE, "r", encoding="utf-8") as f:
-        # Convierte el contenido JSON en objetos Python y lo devuelve.
         return json.load(f)
+
 
 
 # [SRP] Responsabilidad única: serializar resultados a JSON.
