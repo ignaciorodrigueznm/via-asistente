@@ -1,12 +1,13 @@
 """
 config.py · Configuración del sistema y persistencia.
 Gestiona variables de entorno con validación temprana y sanitización de credenciales.
+Utiliza Pydantic Settings / BaseModel para una validación estricta y tipada.
 Cumple el criterio A5 de specs/01-mongodb/spec.md.
 """
 import os
 import re
 from typing import List, Optional
-from urllib.parse import urlparse
+from pydantic import BaseModel, Field, field_validator
 
 
 def sanitizar_mongodb_url(url: str) -> str:
@@ -20,17 +21,31 @@ def sanitizar_mongodb_url(url: str) -> str:
     return re.sub(r":([^/@:]+)@", ":***@", url)
 
 
-class Settings:
-    """Configuraciones globales validadas."""
-
-    def __init__(self):
-        self.MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-        self.MONGODB_DB: str = os.getenv("MONGODB_DB", "via_biblioteca")
-        self.ADMIN_KEY: str = os.getenv("ADMIN_KEY", "admin-secret-token")
-        
-        # CORS_ORIGINS
-        cors_raw = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:8000")
-        self.CORS_ORIGINS: List[str] = [origin.strip() for origin in cors_raw.split(",") if origin.strip()]
+class Settings(BaseModel):
+    """Configuraciones globales del sistema validadas con Pydantic BaseModel."""
+    MONGODB_URL: str = Field(
+        default_factory=lambda: os.getenv("MONGODB_URL", "mongodb://localhost:27017"),
+        description="URL de conexión a la base de datos MongoDB"
+    )
+    MONGODB_DB: str = Field(
+        default_factory=lambda: os.getenv("MONGODB_DB", "via_biblioteca"),
+        description="Nombre de la base de datos principal"
+    )
+    ADMIN_KEY: str = Field(
+        default_factory=lambda: os.getenv("ADMIN_KEY", "admin-secret-token"),
+        description="Token de autenticación de rutas de administración"
+    )
+    CORS_ORIGINS: List[str] = Field(
+        default_factory=lambda: [
+            origin.strip()
+            for origin in os.getenv(
+                "CORS_ORIGINS",
+                "http://localhost:5173,http://localhost:5174,http://localhost:8000"
+            ).split(",")
+            if origin.strip()
+        ],
+        description="Lista de orígenes autorizados para CORS"
+    )
 
     def validar_mongo(self) -> None:
         """

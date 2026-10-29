@@ -715,6 +715,137 @@ async def fundacion_endpoint(request):
 # ---------------------------------------------------------------------------
 # Endpoints de Biblioteca (Sección 17.2 Contrato Común)
 # ---------------------------------------------------------------------------
+from models import LibroModel, FragmentoModel, DetalleLibroResponse
+
+
+def _serializar_entidad(doc):
+    """Convierte campos no serializables como datetime a string ISO."""
+    if not isinstance(doc, dict):
+        return doc
+    res = {}
+    for k, v in doc.items():
+        if hasattr(v, "isoformat"):
+            res[k] = v.isoformat()
+        elif isinstance(v, dict):
+            res[k] = _serializar_entidad(v)
+        elif isinstance(v, list):
+            res[k] = [_serializar_entidad(item) if isinstance(item, dict) else item for item in v]
+        else:
+            res[k] = v
+    return res
+
+
+async def listar_libros_endpoint(request):
+    """GET /api/libros: Catálogo de libros publicados (App del usuario)."""
+    if book_repo is not None:
+        try:
+            libros = book_repo.listar_libros(solo_publicados=True)
+            libros_validados = [
+                LibroModel.model_validate(l).model_dump(mode="json")
+                for l in libros
+            ]
+            return JSONResponse(libros_validados, status_code=200)
+        except Exception as e:
+            print(f"[API] Error al listar libros de repositorio: {e}")
+
+    # Fallback si Mongo no está activo aún: devolver el libro fundacional por defecto
+    libro_default = [{
+        "slug": "fundacion-las-varillas",
+        "titulo": "Origen y Fundación de Las Varillas",
+        "autor": "Comunidad Historiográfica de Las Varillas",
+        "anio": 1900,
+        "fuente_tipo": "secundaria",
+        "estado": "publicado",
+        "resumen": "Debates historiográficos y posturas sobre el origen de Las Varillas.",
+        "temas": ["fundacion", "ferrocarril", "historia local", "origen"]
+    }]
+    libros_validados = [LibroModel.model_validate(l).model_dump(mode="json") for l in libro_default]
+    return JSONResponse(libros_validados, status_code=200)
+
+
+async def obtener_libro_fragmentos_endpoint(request):
+    """GET /api/libros/{slug}: Fragmentos de un libro publicado (App del usuario)."""
+    slug = request.path_params.get("slug")
+    if not slug:
+        return JSONResponse({"error": "slug requerido"}, status_code=400)
+
+    if book_repo is not None:
+        try:
+            libro = book_repo.obtener_libro(slug)
+            if not libro or libro.get("estado") != "publicado":
+                return JSONResponse({"error": "Libro no encontrado"}, status_code=404)
+            frags = book_repo.obtener_fragmentos(slug)
+            detalle = DetalleLibroResponse(
+                libro=LibroModel.model_validate(libro),
+                fragmentos=[FragmentoModel.model_validate(f) for f in frags]
+            )
+            return JSONResponse(detalle.model_dump(mode="json"), status_code=200)
+        except Exception as e:
+            print(f"[API] Error al obtener libro {slug}: {e}")
+
+    # Fallback con fundacion.json si el slug es el fundacional
+    if slug == "fundacion-las-varillas" and os.path.exists(os.path.join(BASE_DIR, "fundacion.json")):
+        with open(os.path.join(BASE_DIR, "fundacion.json"), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        fallback_detalle = DetalleLibroResponse(
+            libro=LibroModel(slug=slug, titulo="Origen y Fundación de Las Varillas", estado="publicado"),
+            fragmentos=[FragmentoModel(id=item["id"], libro_slug=slug, titulo=item.get("titulo", "Sección"), contenido=item.get("contenido", ""), tags=item.get("tags", [])) for item in data]
+        )
+        return JSONResponse(fallback_detalle.model_dump(mode="json"), status_code=200)
+
+    return JSONResponse({"error": "Libro no disponible"}, status_code=404)
+
+
+async def fundacion_endpoint(request):
+    """
+    GET/POST /api/fundacion — consulta el libro histórico.
+      - sin parámetros: índice de secciones (id, título, etiquetas)
+      - ?id=<id>: una sección completa
+      - ?tema=/q=/buscar=: búsqueda por palabras clave
+      - ?all=true: todas las secciones completas
+    """
+    # Filtro vacío por defecto.
+    filtro = ""
+    # Si es POST...
+    if request.method == "POST":
+        # ...intenta leer el JSON.
+        try:
+            # Lee el cuerpo JSON.
+            body = await request.json()
+            # Extrae el filtro con la función dedicada.
+            filtro = filtro_desde_post(body)
+        # Si falla algo...
+        except Exception:
+            # ...usa filtro vacío.
+            filtro = ""
+    # Si es GET...
+    else:
+        # ...extrae el filtro de la URL con la función dedicada.
+        filtro = filtro_desde_query(request.query_params)
+
+    # Si es GET y no trae parámetros de filtro, devuelve el formato completo (Plan Taller MCP)
+    if request.method == "GET" and not request.query_params:
+        # Prioridad: si book_repo está activo, consultar el libro desde la persistencia
+        if book_repo is not None:
+            try:
+                frags = book_repo.obtener_fragmentos("fundacion-las-varillas")
+                if frags:
+                    full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in frags])
+                    return JSONResponse({"raw": frags, "full_text": full_text}, status_code=200)
+            except Exception:
+                pass
+        
+        data_path = os.path.join(BASE_DIR, "fundacion.json")
+        if os.path.exists(data_path):
+            with open(data_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in data])
+            return JSONResponse({"raw": data, "full_text": full_text}, status_code=200)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints de Biblioteca (Sección 17.2 Contrato Común)
+# ---------------------------------------------------------------------------
 def _serializar_entidad(doc):
     """Convierte campos no serializables como datetime a string ISO."""
     if not isinstance(doc, dict):
