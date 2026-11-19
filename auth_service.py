@@ -8,8 +8,11 @@ from typing import Dict, Any, Optional
 import bcrypt
 import jwt
 
-# Clave secreta para firma de JWT (por defecto se lee de .env)
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "via_secret_jwt_key_2026_super_secure")
+from config import settings
+
+# La clave se lee de la configuración centralizada; nunca va escrita en el repositorio.
+JWT_SECRET_KEY = settings.JWT_SECRET_KEY
+JWT_TEMPORAL = not os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 días de validez
 

@@ -1,0 +1,596 @@
+/* ==========================================================================
+   VÍA · Estilos de Autenticación, Perfil y Personalización de AI
+   Paleta institucional y tokens de VÍA (Las Varillas, Córdoba).
+   ========================================================================== */
+
+/* ==========================================================================
+   1. GATEWAY DE AUTENTICACIÓN (LOGIN / REGISTRO INICIAL)
+   ========================================================================== */
+.auth-gateway {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: radial-gradient(circle at 50% 20%, #F5FAFD 0%, #E6F2F8 60%, #D4E8F4 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: opacity .32s ease, visibility .32s ease;
+}
+
+.auth-gateway.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: var(--r-lg, 28px);
+  padding: 36px 32px 32px;
+  box-shadow: 0 16px 40px rgba(0, 111, 168, 0.12), 0 2px 10px rgba(26, 29, 32, 0.05);
+  border: 1px solid rgba(201, 220, 231, 0.7);
+  display: flex;
+  flex-direction: column;
+  animation: authCardPop .35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes authCardPop {
+  0% { transform: scale(0.95) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.auth-card__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-card__brand .via-mark {
+  margin-bottom: 12px;
+}
+
+.auth-card__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink, #1A1D20);
+  letter-spacing: -0.02em;
+}
+
+.auth-card__subtitle {
+  margin: 4px 0 0;
+  font-size: 14.5px;
+  color: var(--muted, #5F6A73);
+}
+
+/* Pestañas */
+.auth-tabs {
+  display: flex;
+  background: var(--blue-50, #D3EAF6);
+  padding: 4px;
+  border-radius: var(--r-md, 18px);
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-ink, #006FA8);
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+  text-align: center;
+}
+
+.auth-tab:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.auth-tab.is-active {
+  background: #FFFFFF;
+  color: var(--blue-ink, #006FA8);
+  box-shadow: 0 2px 8px rgba(0, 111, 168, 0.12);
+}
+
+/* Alertas de Error / Éxito */
+.auth-alert {
+  padding: 10px 14px;
+  border-radius: var(--r-sm, 12px);
+  font-size: 13.5px;
+  line-height: 1.4;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn .2s ease;
+}
+
+.auth-alert--error {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+
+.auth-alert--success {
+  background: #D1FAE5;
+  color: #065F46;
+  border: 1px solid #6EE7B7;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Formularios y Campos */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.auth-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink, #1A1D20);
+}
+
+.auth-field input,
+.auth-field select,
+.auth-field textarea {
+  width: 100%;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink, #1A1D20);
+  background: #FAFBFD;
+  border: 1.5px solid var(--line, #C9DCE7);
+  border-radius: var(--r-sm, 12px);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+.auth-field input:focus,
+.auth-field select:focus,
+.auth-field textarea:focus {
+  border-color: var(--blue, #0088CE);
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(0, 136, 206, 0.15);
+}
+
+.auth-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-wrapper input {
+  padding-right: 42px;
+}
+
+.btn-toggle-pw {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 16px;
+  opacity: 0.6;
+  border-radius: 6px;
+  transition: opacity .18s ease;
+}
+
+.btn-toggle-pw:hover {
+  opacity: 1;
+}
+
+.field-hint,
+.photo-hint {
+  font-size: 12px;
+  color: var(--muted, #5F6A73);
+  margin: 3px 0 0;
+  line-height: 1.35;
+}
+
+.input--readonly {
+  background: #F1F5F9 !important;
+  color: #64748B !important;
+  cursor: not-allowed;
+}
+
+/* Botón Primario */
+.auth-btn-primary {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #00AFF0 0%, #0088CE 100%);
+  border: none;
+  border-radius: var(--r-md, 18px);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 136, 206, 0.28);
+  transition: all .2s ease;
+}
+
+.auth-btn-primary:hover {
+  background: linear-gradient(135deg, #009FE0 0%, #0077B5 100%);
+  box-shadow: 0 6px 18px rgba(0, 136, 206, 0.36);
+  transform: translateY(-1px);
+}
+
+.auth-btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0, 136, 206, 0.2);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.auth-switch {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--muted, #5F6A73);
+}
+
+.auth-switch a {
+  color: var(--blue-ink, #006FA8);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   2. TOPBAR: BADGE Y MENÚ DE USUARIO
+   ========================================================================== */
+.user-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.btn-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 5px;
+  border-radius: 20px;
+  background: #FFFFFF;
+  border: 1px solid var(--line, #C9DCE7);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s ease;
+}
+
+.btn-user-badge:hover {
+  background: var(--blue-50, #D3EAF6);
+  border-color: var(--blue, #0088CE);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sky, #00AFF0), var(--yellow, #F2C94C));
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  overflow: hidden;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink, #1A1D20);
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Menú Dropdown */
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #FFFFFF;
+  border: 1px solid var(--line, #C9DCE7);
+  border-radius: var(--r-md, 18px);
+  box-shadow: 0 10px 30px rgba(0, 94, 143, 0.15);
+  padding: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn .18s ease;
+}
+
+.user-dropdown__header {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-dropdown__header strong {
+  font-size: 14px;
+  color: var(--ink, #1A1D20);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown__header span {
+  font-size: 12.5px;
+  color: var(--muted, #5F6A73);
+}
+
+.user-dropdown__divider {
+  height: 1px;
+  background: var(--line, #C9DCE7);
+  margin: 4px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-sm, 12px);
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink, #1A1D20);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dropdown-item:hover {
+  background: var(--blue-50, #D3EAF6);
+  color: var(--blue-ink, #006FA8);
+}
+
+.dropdown-item--danger {
+  color: #DC2626;
+}
+
+.dropdown-item--danger:hover {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+/* ==========================================================================
+   3. MODAL: MI PERFIL Y PERSONALIZAR AI
+   ========================================================================== */
+.modal-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-dialog[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #FFFFFF;
+  border-radius: var(--r-lg, 28px);
+  padding: 28px 28px 24px;
+  box-shadow: 0 20px 50px rgba(0, 40, 80, 0.2);
+  border: 1px solid var(--line, #C9DCE7);
+  animation: authCardPop .28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink, #1A1D20);
+}
+
+.modal-sub {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  color: var(--muted, #5F6A73);
+}
+
+.modal-tabs {
+  display: flex;
+  background: var(--blue-50, #D3EAF6);
+  padding: 4px;
+  border-radius: var(--r-md, 18px);
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.modal-tab {
+  flex: 1;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-ink, #006FA8);
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+  text-align: center;
+}
+
+.modal-tab.is-active {
+  background: #FFFFFF;
+  box-shadow: 0 2px 6px rgba(0, 111, 168, 0.12);
+}
+
+.modal-content-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-content-section[hidden] {
+  display: none;
+}
+
+/* Fila de foto de perfil */
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line, #C9DCE7);
+}
+
+.photo-preview-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 94, 143, 0.15);
+  border: 2px solid var(--blue, #0088CE);
+  flex-shrink: 0;
+}
+
+.avatar-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-preview-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--sky, #00AFF0), var(--yellow, #F2C94C));
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-upload-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-text-danger {
+  background: none;
+  border: none;
+  color: #DC2626;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  padding: 2px 0;
+}
+
+.btn-text-danger:hover {
+  text-decoration: underline;
+}
+
+/* Responsividad Móvil */
+@media (max-width: 600px) {
+  .auth-card {
+    padding: 28px 20px 24px;
+    border-radius: 22px;
+  }
+  .modal-card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  .user-name {
+    display: none;
+  }
+}

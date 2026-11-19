@@ -47,8 +47,9 @@ import threading
 import webbrowser
 # Utilidades para gestionar el ciclo de vida de recursos asíncronos.
 from contextlib import asynccontextmanager, AsyncExitStack
-# Cliente HTTP asíncrono (Ollama).
+from typing import Any, Dict, Optional
 import httpx
+
 # Aplicación web ASGI.
 from starlette.applications import Starlette
 # Tipos de respuesta HTTP.
@@ -107,6 +108,39 @@ SYSTEM_PROMPT = (
     "3. Responde en español, con tono cercano y claro. Sé conciso: prefiere respuestas breves y bien organizadas."
 # Cierra el prompt.
 )
+
+
+def bloque_preferencias(preferencias: Optional[dict]) -> str:
+    """Traduce las preferencias del usuario a instrucciones para el modelo."""
+    if not preferencias:
+        return ""
+    lineas = []
+    nombre = str(preferencias.get("nombre_usuario_preferido") or "").strip()
+    if nombre:
+        lineas.append(
+            f'El usuario pidió que te dirijas a él como "{nombre}" '
+            "(es su nombre o apodo preferido; úsalo en tus respuestas)."
+        )
+    tono = preferencias.get("tono")
+    if tono == "formal":
+        lineas.append("Usa un tono formal, respetuoso y profesional.")
+    elif tono == "academico":
+        lineas.append("Usa un tono académico, riguroso y preciso, con vocabulario historiográfico.")
+    else:
+        lineas.append("Usa un tono cercano y amable.")
+    directivas = str(preferencias.get("directivas_extra") or "").strip()
+    if directivas:
+        lineas.append(f"Directivas personalizadas del usuario: {directivas}")
+    nombre_asistente = str(preferencias.get("nombre_asistente") or "VÍA").strip() or "VÍA"
+    lineas.append(f'Tu nombre es "{nombre_asistente}"; presentate con ese nombre.')
+    if not lineas:
+        return ""
+    return "\nPreferencias del usuario (respetarlas siempre):\n" + "\n".join(f"- {l}" for l in lineas)
+
+
+def construir_system_prompt(preferencias: Optional[dict] = None) -> str:
+    """Prompt base de VÍA con las preferencias personalizadas del usuario."""
+    return SYSTEM_PROMPT + bloque_preferencias(preferencias)
 
 # Estado global del backend (se maneja en silencio; la interfaz no lo muestra)
 # Repositorio de libros (MongoDB o Fake)
@@ -253,14 +287,14 @@ def formatear_contexto_para_llm(contexto_raw: str) -> str:
 
 
 # [SRP] Responsabilidad única: armar los mensajes para el modelo.
-def construir_mensajes(pregunta: str, contexto: str) -> list:
+def construir_mensajes(pregunta: str, contexto: str, preferencias: Optional[dict] = None) -> list:
     """Arma los mensajes que se envían al modelo."""
     # Convierte el contexto en texto legible.
     contexto_legible = formatear_contexto_para_llm(contexto)
     # Devuelve la lista de mensajes (sistema + usuario).
     return [
-        # Mensaje de sistema con las reglas de VÍA.
-        {"role": "system", "content": SYSTEM_PROMPT},
+        # Mensaje de sistema con las reglas de VÍA y la personalización del usuario.
+        {"role": "system", "content": construir_system_prompt(preferencias)},
         # Mensaje del usuario.
         {
             # Rol "user".
@@ -384,7 +418,8 @@ def respuesta_desde_libro(chunks: list) -> str:
 
 # [SRP] Responsabilidad única: generar la respuesta (modelo + respaldo) como flujo de eventos.
 # [OCP] Lo comparten SSE y WebSocket: un nuevo transporte lo reutiliza sin modificarlo.
-async def generar_respuesta(pregunta: str, contexto: str, chunks: list, model: str, timeout: float = 240.0):
+async def generar_respuesta(pregunta: str, contexto: str, chunks: list, model: str,
+                            timeout: float = 240.0, preferencias: Optional[dict] = None):
     """
     Generador asíncrono compartido por SSE y WebSocket.
     Emite tuplas ("token", texto) o ("error", mensaje).
@@ -417,7 +452,7 @@ async def generar_respuesta(pregunta: str, contexto: str, chunks: list, model: s
                 # Dirección de Ollama.
                 OLLAMA_URL,
                 # Cuerpo: modelo, mensajes y streaming activado.
-                json={"model": model, "messages": construir_mensajes(pregunta, contexto), "stream": True}
+                json={"model": model, "messages": construir_mensajes(pregunta, contexto, preferencias), "stream": True}
             # Nombra la respuesta como `resp`.
             ) as resp:
                 # Si Ollama no responde 200...
@@ -485,6 +520,17 @@ async def lifespan(app: Starlette):
     # Mensaje de inicio.
     print("\n[VÍA] Iniciando servidor del libro histórico...")
 
+    # Valida la firma de tokens (Spec 06); nunca imprime la clave.
+    try:
+        from config import settings as _settings
+        _settings.validar_jwt()
+        from auth_service import JWT_TEMPORAL
+        if JWT_TEMPORAL:
+            print("[VÍA] Aviso JWT: no se definió JWT_SECRET_KEY; se usa una clave temporal. "
+                  "Las sesiones se invalidarán al reiniciar el servidor.")
+    except Exception as err:
+        raise RuntimeError(f"Configuración de autenticación inválida: {err}") from err
+
     # Inicializa el repositorio de libros (Criterio A5 / 4.1.4)
     try:
         from pymongo import MongoClient
@@ -499,11 +545,14 @@ async def lifespan(app: Starlette):
             print(f"[VÍA] Persistencia conectada a MongoDB ({sanitizar_mongodb_url(settings.MONGODB_URL)}).")
         except Exception as e:
             from config import sanitizar_mongodb_url
+            from repository import FakeRepo
             print(f"[VÍA] Aviso Persistencia: No se pudo conectar a MongoDB ({sanitizar_mongodb_url(getattr(settings, 'MONGODB_URL', ''))}): {e}")
-            book_repo = None
+            print("[VÍA] Activando modo persistencia en memoria (FakeRepo) para permitir pruebas sin MongoDB activo.")
+            book_repo = FakeRepo()
     except Exception as err:
+        from repository import FakeRepo
         print(f"[VÍA] Advertencia al configurar persistencia: {err}")
-        book_repo = None
+        book_repo = FakeRepo()
 
     # Pila que cerrará los recursos al terminar.
     exit_stack = AsyncExitStack()
@@ -950,7 +999,7 @@ async def obtener_libro_fragmentos_endpoint(request):
 
 # [SRP] Responsabilidad única: leer los parámetros de chat (antes repetido 3 veces:
 # chat_endpoint, chat_stream_endpoint y websocket_chat_endpoint).
-def obtener_parametros_chat(body):
+def obtener_parametros_chat(body, preferencias: Optional[dict] = None):
     """Devuelve (pregunta, use_mcp, model) a partir del cuerpo recibido."""
     if not isinstance(body, dict):
         return "", True, MODEL
@@ -958,10 +1007,30 @@ def obtener_parametros_chat(body):
     pregunta = (body.get("text") or body.get("message") or "").strip()
     # Si usar MCP (por defecto sí).
     use_mcp = body.get("use_mcp", True)
-    # Modelo pedido (por defecto el configurado).
-    model = body.get("model", MODEL)
+    # Modelo pedido, preferencia del usuario o el configurado.
+    modelo_preferido = (preferencias or {}).get("modelo_preferido")
+    model = body.get("model") or modelo_preferido or MODEL
     # Devuelve los tres valores.
     return pregunta, use_mcp, model
+
+
+def _preferencias_desde_token(token: Optional[str]) -> Optional[dict]:
+    """Devuelve las preferencias de AI del usuario dueño del token, si es válido."""
+    if not token or book_repo is None:
+        return None
+    payload = decodificar_token_jwt(token)
+    if not payload or "user_id" not in payload:
+        return None
+    usuario = book_repo.obtener_usuario_por_id(payload["user_id"])
+    return (usuario or {}).get("preferencias_ai")
+
+
+def _preferencias_desde_request(request) -> Optional[dict]:
+    """Lee el token Bearer del request HTTP y devuelve las preferencias del usuario."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    return _preferencias_desde_token(auth_header[7:].strip())
 
 
 # Endpoint de chat sin streaming.
@@ -976,8 +1045,10 @@ async def chat_endpoint(request):
         # ...responde 400.
         return JSONResponse({"error": "Formato JSON inválido"}, status_code=400)
 
+    # Preferencias del usuario autenticado (si envió token).
+    preferencias = _preferencias_desde_request(request)
     # Extrae los parámetros con la función dedicada.
-    pregunta, use_mcp, model = obtener_parametros_chat(body)
+    pregunta, use_mcp, model = obtener_parametros_chat(body, preferencias)
 
     # Si la pregunta está vacía...
     if not pregunta:
@@ -996,7 +1067,7 @@ async def chat_endpoint(request):
                 # Dirección de Ollama.
                 OLLAMA_URL,
                 # Cuerpo de la petición.
-                json={"model": model, "messages": construir_mensajes(pregunta, contexto), "stream": False}
+                json={"model": model, "messages": construir_mensajes(pregunta, contexto, preferencias), "stream": False}
             # Cierra la llamada.
             )
             # Lanza excepción si hubo error HTTP.
@@ -1045,8 +1116,10 @@ async def chat_stream_endpoint(request):
         # ...responde 400.
         return JSONResponse({"error": "Formato JSON inválido"}, status_code=400)
 
+    # Preferencias del usuario autenticado (si envió token).
+    preferencias = _preferencias_desde_request(request)
     # Extrae los parámetros con la función dedicada.
-    pregunta, use_mcp, model = obtener_parametros_chat(body)
+    pregunta, use_mcp, model = obtener_parametros_chat(body, preferencias)
 
     # Si la pregunta está vacía...
     if not pregunta:
@@ -1066,7 +1139,9 @@ async def chat_stream_endpoint(request):
         yield sse({"type": "mcp_context", "mcp": mcp_data})
 
         # Recorre los eventos generados por el modelo/respaldo.
-        async for kind, value in generar_respuesta(pregunta, contexto, mcp_data.get("chunks", []), model):
+        async for kind, value in generar_respuesta(
+            pregunta, contexto, mcp_data.get("chunks", []), model, preferencias=preferencias
+        ):
             # Si es un token...
             if kind == "token":
                 # ...lo envía.
@@ -1106,16 +1181,25 @@ async def websocket_chat_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("[WebSocket] 🔌 Cliente conectado en /ws/chat")
 
+    # El navegador no puede enviar cabeceras en WebSocket: el token viaja por query.
+    token_ws = websocket.query_params.get("token")
+    if not token_ws:
+        auth_header = websocket.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token_ws = auth_header[7:].strip()
+    preferencias = _preferencias_desde_token(token_ws)
+
     # Historial de conversación de la sesión con prompt de historiador e índice resumido
     session_messages = [
         {
             "role": "system",
             "content": (
-                "Eres un historiador experto en la ciudad de Las Varillas (Córdoba, Argentina).\n"
+                "Eres VÍA, un historiador experto en la ciudad de Las Varillas (Córdoba, Argentina).\n"
                 "INSTRUCCIÓN CRÍTICA: El índice provisto es solo un resumen. Si el usuario pregunta por algo "
                 "que no está listado en este índice resumido, DEBES llamar a la herramienta 'consultar_fundacion_las_varillas' "
                 "usando el término o tema de la duda como parámetro 'tema' para buscar en la base histórica.\n"
                 f"ÍNDICE RESUMIDO:\n{mcp_index_str or 'Sin índice previo cargado.'}"
+                f"{bloque_preferencias(preferencias)}"
             )
         }
     ]
@@ -1136,7 +1220,7 @@ async def websocket_chat_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "pong", "status": "connected"})
                 continue
 
-            pregunta, use_mcp, model = obtener_parametros_chat(body)
+            pregunta, use_mcp, model = obtener_parametros_chat(body, preferencias)
             if not pregunta:
                 await websocket.send_json({"type": "error", "message": "El mensaje no puede estar vacío"})
                 continue
@@ -1389,7 +1473,9 @@ async def actualizar_preferencias_ai_endpoint(request):
 
     try:
         body = await request.json()
-        prefs = PreferenciasAIModel.model_validate(body)
+        if not isinstance(body, dict):
+            raise ValueError("Se espera un objeto JSON")
+        prefs = PreferenciasAIModel.model_validate({**(usuario.get("preferencias_ai") or {}), **body})
     except Exception as e:
         return JSONResponse({"error": f"Preferencias inválidas: {e}"}, status_code=422)
 
@@ -1467,7 +1553,10 @@ async def guardar_conversacion_endpoint(request):
         "mensajes": body.get("mensajes", [])
     }
     if book_repo is not None:
-        book_repo.guardar_conversacion(doc)
+        try:
+            book_repo.guardar_conversacion(doc)
+        except ValueError as err:
+            return JSONResponse({"error": str(err)}, status_code=409)
         return JSONResponse({"mensaje": "Conversación guardada", "id": conv_id}, status_code=200)
 
     return JSONResponse({"error": "Error interno"}, status_code=500)

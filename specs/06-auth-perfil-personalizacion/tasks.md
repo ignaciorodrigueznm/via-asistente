@@ -26,5 +26,5 @@
 
 - [x] **T5** Endpoints de Conversaciones Pasadas y personalización en Chat (`web_server.py`).
   - `GET /api/conversaciones`, `GET /api/conversaciones/{id}`, `POST /api/conversaciones`, `DELETE /api/conversaciones/{id}`.
-  - Inyección de preferencias del usuario en el prompt del sistema.
-  - Se comprueba con: `tests/test_auth_endpoints.py`.
+  - Inyección de preferencias del usuario en el prompt del sistema (SSE, `/api/chat` y WebSocket).
+  - Se comprueba con: `tests/test_auth_endpoints.py` y `tests/test_preferencias_prompt.py`.

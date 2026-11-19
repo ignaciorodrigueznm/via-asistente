@@ -120,6 +120,79 @@
   // [SRP] Texto de "sin conversaciones" (antes estaba escrito 2 veces).
   const HISTORY_EMPTY_HTML = '<p class="hist__empty">Todavía no hay conversaciones guardadas.<br>¡Hazme una pregunta para empezar!</p>';
 
+  const haySesionRemota = () => !!(window.viaAuth && window.viaAuth.getToken && window.viaAuth.getToken());
+
+  function aMensajesRemotos(mensajes) {
+    return mensajes.map((m) => ({
+      rol: m.role === 'bot' ? 'assistant' : m.role,
+      contenido: m.text || '',
+      fuentes: m.chunks || []
+    }));
+  }
+
+  function aSesionLocal(conv) {
+    const fecha = conv.actualizado || conv.creado || new Date().toISOString();
+    return {
+      id: conv.id,
+      title: conv.titulo || 'Conversación',
+      ts: Date.parse(fecha) || Date.now(),
+      messages: (conv.mensajes || []).map((m) => ({
+        role: m.rol === 'assistant' ? 'bot' : 'user',
+        text: m.contenido || '',
+        chunks: m.fuentes || []
+      }))
+    };
+  }
+
+  async function guardarConversacionRemota(session) {
+    if (!haySesionRemota()) return;
+    try {
+      await window.viaAuth.authFetch('/api/conversaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: session.id,
+          titulo: session.title,
+          libro_slug: 'fundacion-las-varillas',
+          mensajes: aMensajesRemotos(session.messages)
+        })
+      });
+    } catch (_) { /* sin conexión: permanece el caché local */ }
+  }
+
+  async function eliminarConversacionRemota(id) {
+    if (!haySesionRemota()) return;
+    try {
+      await window.viaAuth.authFetch(`/api/conversaciones/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    } catch (_) { /* sin conexión: permanece el caché local */ }
+  }
+
+  async function cargarHistorialRemoto() {
+    if (!haySesionRemota()) return;
+    try {
+      const res = await window.viaAuth.authFetch('/api/conversaciones');
+      if (!res.ok) return;
+      const resumen = await res.json();
+      const cache = loadHistory();
+      const sesiones = await Promise.all(resumen.slice(0, HISTORY_MAX).map(async (conv) => {
+        const local = cache.find((s) => s.id === conv.id);
+        if (local) {
+          return { ...local, title: conv.titulo || local.title, ts: Date.parse(conv.actualizado) || local.ts };
+        }
+        const detalle = await window.viaAuth.authFetch(`/api/conversaciones/${encodeURIComponent(conv.id)}`);
+        return detalle.ok ? aSesionLocal(await detalle.json()) : null;
+      }));
+      saveHistory(sesiones.filter(Boolean));
+      renderHistoryList();
+    } catch (_) { /* se conserva el historial local */ }
+  }
+
+  window.addEventListener('via:authenticated', cargarHistorialRemoto);
+  window.addEventListener('via:logout', () => {
+    saveHistory([]);
+    activeSession = null;
+  });
+
   // Conversación activa en memoria
   // Sesión actual (null si no hay).
   let activeSession = null;     // { id, title, ts, messages: [{role, text, chunks?}] }
@@ -149,6 +222,8 @@
     list.unshift(activeSession);
     // Persiste la lista.
     saveHistory(list);
+    // Si hay usuario autenticado, replica en MongoDB.
+    guardarConversacionRemota(activeSession);
   }
 
   // Crea una sesión nueva a partir de la primera pregunta.
@@ -361,6 +436,8 @@
     const list = loadHistory().filter((s) => s.id !== id);
     // Guarda la nueva lista.
     saveHistory(list);
+    // Si hay usuario autenticado, replica el borrado en MongoDB.
+    eliminarConversacionRemota(id);
     // Inicia la animación de salida.
     itemEl.classList.add('hist__item--removing');
     // Cuando termina la animación (300 ms)...
@@ -829,7 +906,9 @@
     try {
       wsSuccess = await new Promise((resolve) => {
         const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${wsProto}//${location.host}/ws/chat`);
+        const token = window.viaAuth && window.viaAuth.getToken ? window.viaAuth.getToken() : '';
+        const wsUrl = `${wsProto}//${location.host}/ws/chat${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+        const ws = new WebSocket(wsUrl);
         const timer = setTimeout(() => {
           try { ws.close(); } catch (_) {}
           resolve(false);
@@ -898,9 +977,12 @@
     // Si WebSocket no respondió o no se pudo conectar, recurre a HTTP POST /api/chat/stream
     if (!wsSuccess && !text) {
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        const token = window.viaAuth && window.viaAuth.getToken ? window.viaAuth.getToken() : '';
+        if (token) headers.Authorization = `Bearer ${token}`;
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ message: question, use_mcp: true })
         });
         if (!res.ok || !res.body) throw new Error('http ' + res.status);

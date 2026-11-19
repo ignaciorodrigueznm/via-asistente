@@ -40,10 +40,102 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- [SRP] Estilos en su propio archivo (css/via.css). -->
   <link rel="stylesheet" href="css/via.css?v=20261020">
+  <!-- Estilos de autenticación, perfil y personalización (Spec 06). -->
+  <link rel="stylesheet" href="css/auth.css?v=20261119">
 <!-- Fin de la cabecera. -->
 </head>
 <!-- Cuerpo visible de la página. -->
 <body>
+  <!-- ============ PUERTA DE ACCESO: LOGIN / REGISTRO ============ -->
+  <!-- Se muestra apenas entra a la página mientras no haya sesión válida. -->
+  <div id="auth-gateway" class="auth-gateway" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <div class="auth-card__brand">
+        <span class="via-mark via-mark--lg" aria-hidden="true">
+          <span class="via-mark__spin">
+            <img src="assets/VIA%20LOGO%20(512%20x%20512%20px).svg" alt="" width="512" height="512" decoding="async">
+          </span>
+          <span class="via-mark__hub">
+            <img src="assets/VIA%20LOGO%20(512%20x%20512%20px).svg" alt="" width="512" height="512" decoding="async">
+          </span>
+        </span>
+        <h1 class="auth-card__title" id="auth-title">Bienvenido a VÍA</h1>
+        <p class="auth-card__subtitle">Ingresá para explorar la historia de Las Varillas</p>
+      </div>
+
+      <div class="auth-tabs" role="tablist" aria-label="Acceso">
+        <button id="tab-login" class="auth-tab is-active" type="button" role="tab" aria-selected="true">Iniciar sesión</button>
+        <button id="tab-register" class="auth-tab" type="button" role="tab" aria-selected="false">Crear cuenta</button>
+      </div>
+
+      <div id="auth-alert" class="auth-alert" role="alert" hidden></div>
+
+      <!-- Formulario de ingreso -->
+      <form id="form-login" class="auth-form">
+        <div class="auth-field">
+          <label for="login-identificador">Usuario o correo electrónico</label>
+          <input id="login-identificador" name="identificador" type="text" autocomplete="username"
+            placeholder="nacho_live o nacho@live.com" minlength="3" maxlength="120" required>
+        </div>
+        <div class="auth-field">
+          <label for="login-password">Contraseña</label>
+          <div class="auth-input-wrapper">
+            <input id="login-password" name="password" type="password" autocomplete="current-password"
+              placeholder="Tu contraseña" minlength="1" required>
+            <button class="btn-toggle-pw" type="button" aria-label="Mostrar contraseña">Ver</button>
+          </div>
+        </div>
+        <button id="btn-submit-login" class="auth-btn-primary" type="submit">
+          <span class="btn-text">Iniciar sesión</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+        <p class="auth-switch">¿No tenés cuenta? <a id="link-go-register" href="#register">Registrate</a></p>
+      </form>
+
+      <!-- Formulario de registro -->
+      <form id="form-register" class="auth-form" hidden>
+        <div class="auth-field">
+          <label for="register-nombre">Nombre y apellido</label>
+          <input id="register-nombre" name="nombre" type="text" autocomplete="name"
+            placeholder="Ignacio Rodriguez" maxlength="100" required>
+        </div>
+        <div class="auth-field">
+          <label for="register-username">Nombre de usuario</label>
+          <input id="register-username" name="username" type="text" autocomplete="username"
+            placeholder="nacho_live" pattern="[a-zA-Z0-9_.\-]{3,50}" minlength="3" maxlength="50"
+            title="Solo letras, números, puntos, guiones y guiones bajos (mínimo 3 caracteres)" required>
+        </div>
+        <div class="auth-field">
+          <label for="register-email">Correo electrónico</label>
+          <input id="register-email" name="email" type="email" autocomplete="email"
+            placeholder="nacho@ejemplo.com" maxlength="120" required>
+        </div>
+        <div class="auth-field">
+          <label for="register-password">Contraseña</label>
+          <div class="auth-input-wrapper">
+            <input id="register-password" name="password" type="password" autocomplete="new-password"
+              placeholder="Mínimo 6 caracteres" minlength="6" maxlength="128" required>
+            <button class="btn-toggle-pw" type="button" aria-label="Mostrar contraseña">Ver</button>
+          </div>
+          <p class="field-hint">Usá al menos 6 caracteres.</p>
+        </div>
+        <div class="auth-field">
+          <label for="register-confirm">Confirmar contraseña</label>
+          <div class="auth-input-wrapper">
+            <input id="register-confirm" name="confirm" type="password" autocomplete="new-password"
+              placeholder="Repetí la contraseña" minlength="6" maxlength="128" required>
+            <button class="btn-toggle-pw" type="button" aria-label="Mostrar contraseña">Ver</button>
+          </div>
+        </div>
+        <button id="btn-submit-register" class="auth-btn-primary" type="submit">
+          <span class="btn-text">Crear cuenta</span>
+          <span class="btn-spinner" hidden></span>
+        </button>
+        <p class="auth-switch">¿Ya tenés cuenta? <a id="link-go-login" href="#login">Ingresá</a></p>
+      </form>
+    </div>
+  </div>
+
   <!-- Contenedor general (permite pantalla dividida con el libro). -->
   <div id="shell" class="shell">
   <!-- Aplicación de chat; empieza en estado vacío (bienvenida). -->
@@ -103,6 +195,24 @@
           <!-- Ícono de lápiz. -->
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
+        <!-- Menú del usuario autenticado (lo completa js/auth.js). -->
+        <div id="user-menu-wrapper" class="user-menu-wrapper" hidden>
+          <button id="btn-user-profile" class="btn-user-badge" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Menú de usuario">
+            <span id="topbar-avatar" class="user-avatar" aria-hidden="true">U</span>
+            <span id="topbar-username" class="user-name">Usuario</span>
+          </button>
+          <div id="user-dropdown" class="user-dropdown" hidden>
+            <div class="user-dropdown__header">
+              <strong id="dropdown-full-name">Usuario</strong>
+              <span id="dropdown-username">@usuario</span>
+            </div>
+            <div class="user-dropdown__divider"></div>
+            <button id="dropdown-btn-profile" class="dropdown-item" type="button">Mi perfil</button>
+            <button id="dropdown-btn-ai" class="dropdown-item" type="button">Personalizar AI</button>
+            <div class="user-dropdown__divider"></div>
+            <button id="dropdown-btn-logout" class="dropdown-item dropdown-item--danger" type="button">Cerrar sesión</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -229,7 +339,87 @@
   </aside>
   </div><!-- /shell -->
 
+  <!-- ============ MODAL: MI PERFIL / PERSONALIZAR AI ============ -->
+  <div id="profile-modal-scrim" class="scrim" hidden></div>
+  <div id="profile-modal" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal-card">
+      <header class="modal-head">
+        <div>
+          <h2 class="modal-title" id="modal-title">Mi cuenta</h2>
+          <p class="modal-sub">Datos personales y preferencias del asistente</p>
+        </div>
+        <button id="modal-profile-close" class="btn btn--icon" type="button" aria-label="Cerrar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </header>
+
+      <div class="modal-tabs" role="tablist" aria-label="Opciones de cuenta">
+        <button id="modal-tab-perfil" class="modal-tab is-active" type="button" role="tab" aria-selected="true">Mi perfil</button>
+        <button id="modal-tab-ai" class="modal-tab" type="button" role="tab" aria-selected="false">Personalizar AI</button>
+      </div>
+
+      <div id="modal-alert" class="auth-alert" role="alert" hidden></div>
+
+      <!-- Pestaña de perfil -->
+      <section id="modal-content-perfil" class="modal-content-section">
+        <form id="form-update-profile">
+          <div class="profile-photo-row">
+            <div class="photo-preview-wrap">
+              <img id="profile-avatar-preview" class="avatar-preview-img" alt="Vista previa de la foto de perfil" hidden>
+              <div id="profile-avatar-fallback" class="avatar-preview-fallback" aria-hidden="true">U</div>
+            </div>
+            <div class="photo-actions">
+              <label class="btn btn--soft btn-upload-photo" for="profile-photo-input">Cambiar foto</label>
+              <input id="profile-photo-input" type="file" accept="image/*" hidden>
+              <p class="photo-hint">JPG o PNG de hasta 2 MB.</p>
+              <button id="btn-remove-photo" class="btn-text-danger" type="button" hidden>Quitar foto</button>
+            </div>
+          </div>
+          <div class="auth-field">
+            <label for="profile-input-nombre">Nombre y apellido</label>
+            <input id="profile-input-nombre" type="text" maxlength="100" required>
+          </div>
+          <div class="auth-field">
+            <label for="profile-input-username">Nombre de usuario</label>
+            <input id="profile-input-username" class="input--readonly" type="text" readonly>
+          </div>
+          <div class="auth-field">
+            <label for="profile-input-email">Correo electrónico</label>
+            <input id="profile-input-email" class="input--readonly" type="email" readonly>
+          </div>
+          <button id="btn-save-profile" class="auth-btn-primary" type="submit">Guardar cambios</button>
+        </form>
+      </section>
+
+      <!-- Pestaña de personalización de la IA -->
+      <section id="modal-content-ai" class="modal-content-section" hidden>
+        <form id="form-update-ai">
+          <div class="auth-field">
+            <label for="ai-tone-select">Tono de las respuestas</label>
+            <select id="ai-tone-select">
+              <option value="cercano">Cercano</option>
+              <option value="formal">Formal</option>
+              <option value="academico">Académico</option>
+            </select>
+          </div>
+          <div class="auth-field">
+            <label for="ai-preferred-name">¿Cómo quiere que te llame?</label>
+            <input id="ai-preferred-name" type="text" maxlength="60" placeholder="Ej.: Lic. Nacho">
+          </div>
+          <div class="auth-field">
+            <label for="ai-custom-directives">Directivas adicionales</label>
+            <textarea id="ai-custom-directives" rows="4" maxlength="1000" placeholder="Ej.: Citar fuentes primarias de 1900"></textarea>
+            <p class="field-hint">Se agregan al prompt del asistente.</p>
+          </div>
+          <button id="btn-save-ai" class="auth-btn-primary" type="submit">Guardar preferencias</button>
+        </form>
+      </section>
+    </div>
+  </div>
+
   <!-- [SRP] Lógica en su propio archivo (js/via.js). -->
-  <script src="js/via.js?v=20261020"></script>
+  <script src="js/via.js?v=20261119"></script>
+  <!-- Autenticación, perfil y personalización (Spec 06). -->
+  <script src="js/auth.js?v=20261119"></script>
 </body>
 </html>

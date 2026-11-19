@@ -189,6 +189,9 @@ class FakeRepo:
         doc = dict(conversacion)
         doc.setdefault("creado", datetime.now(timezone.utc))
         doc["actualizado"] = datetime.now(timezone.utc)
+        existente = self._conversaciones.get(conv_id)
+        if existente and existente.get("user_id") != doc.get("user_id"):
+            raise ValueError("El identificador de conversación ya pertenece a otro usuario")
         self._conversaciones[conv_id] = doc
         return conv_id
 
@@ -439,7 +442,9 @@ class MongoBookRepository:
         doc = dict(conversacion)
         doc.setdefault("creado", datetime.now(timezone.utc))
         doc["actualizado"] = datetime.now(timezone.utc)
-        self.conversaciones.update_one({"id": conv_id}, {"$set": doc}, upsert=True)
+        self.conversaciones.update_one(
+            {"id": conv_id, "user_id": doc["user_id"]}, {"$set": doc}, upsert=True
+        )
         return conv_id
 
     def listar_conversaciones_usuario(self, user_id: str) -> List[Dict[str, Any]]:

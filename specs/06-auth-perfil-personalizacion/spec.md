@@ -105,6 +105,18 @@ Incorporar en MongoDB un sistema completo y persistente de usuarios para VÍA qu
 
 ---
 
+## Cableado en el Cliente (pantalla de acceso)
+- `index.html` carga `css/auth.css` y `js/auth.js`, y contiene el DOM del gateway (`#auth-gateway`), el menú de usuario de la topbar y el modal de perfil/Personalizar AI.
+- Al entrar sin token, `js/auth.js` muestra el gateway con pestañas de inicio de sesión y registro; con token válido, valida `/api/auth/me` y oculta el gateway.
+- El historial de `js/via.js` se replica en `conversaciones` de MongoDB cuando hay sesión autenticada; sin sesión sigue funcionando con `localStorage`. Al cerrar sesión se limpia el caché local.
+- El chat envía el token en `Authorization: Bearer` (HTTP/SSE) y como `?token=` en WebSocket (el navegador no permite cabeceras en WS). El backend resuelve el usuario y agrega a su prompt: nombre preferido, tono, directivas extra y modelo preferido.
+
+## Decisiones de Seguridad y Persistencia
+- MongoDB es la fuente de verdad de usuarios, perfil, preferencias y conversaciones; las contraseñas solo se guardan como hash `bcrypt`.
+- Los tokens JWT son stateless (firma HS256) y se envían en `Authorization: Bearer`. No se guardan tokens ni `sessionid` en MongoDB: eso evita estado de sesión adicional y escalabilidad ligada a la BD.
+- La clave `JWT_SECRET_KEY` se lee de `.env` (nunca del repositorio). Si falta, se genera una clave temporal por proceso y las sesiones se invalidan al reiniciar; se avisa en consola sin imprimir la clave.
+- Actualmente el token se conserva en `localStorage`. Para un endurecimiento futuro se recomienda migrar a una cookie `httpOnly` + `Secure` + `SameSite`, y agregar una colección `sesiones` (solo hashes de refresh tokens) si se necesita revocación remota.
+
 ## Plan de Pruebas Unitarias
 1. `tests/test_auth.py`:
    - Registro de usuario con hash seguro (verificar que la contraseña nunca se guarda en texto plano).

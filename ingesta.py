@@ -19,7 +19,7 @@ def limpiar_texto(texto: str) -> str:
         texto = texto[1:]
     # Normalizar saltos de línea
     texto = texto.replace("\r\n", "\n").replace("\r", "\n")
-    return texto.strip()
+    return texto.strip()    
 
 
 def _es_titulo(linea: str) -> bool:

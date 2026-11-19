@@ -6,6 +6,7 @@ Cumple el criterio A5 de specs/01-mongodb/spec.md.
 """
 import os
 import re
+import secrets
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
@@ -35,6 +36,10 @@ class Settings(BaseModel):
         default_factory=lambda: os.getenv("ADMIN_KEY", "admin-secret-token"),
         description="Token de autenticación de rutas de administración"
     )
+    JWT_SECRET_KEY: str = Field(
+        default_factory=lambda: os.getenv("JWT_SECRET_KEY") or secrets.token_urlsafe(48),
+        description="Clave para firmar JWT; si no se define se genera una temporal por proceso"
+    )
     CORS_ORIGINS: List[str] = Field(
         default_factory=lambda: [
             origin.strip()
@@ -46,6 +51,18 @@ class Settings(BaseModel):
         ],
         description="Lista de orígenes autorizados para CORS"
     )
+
+    def validar_jwt(self) -> None:
+        """
+        Valida la clave de firma JWT sin exponerla en el mensaje de error.
+        Si no se configuró, se usa una clave temporal segura (los tokens se
+        invalidan al reiniciar el proceso).
+        """
+        if len(self.JWT_SECRET_KEY) < 32:
+            raise ValueError(
+                "Configuración inválida en la variable de entorno 'JWT_SECRET_KEY': "
+                "debe tener al menos 32 caracteres."
+            )
 
     def validar_mongo(self) -> None:
         """
