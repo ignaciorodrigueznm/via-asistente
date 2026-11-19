@@ -108,3 +108,59 @@ class MetaCorpusModel(BaseModel):
         "populate_by_name": True
     }
 
+
+# =============================================================================
+# Modelos para Usuarios, Autenticación, Perfil y Conversaciones
+# =============================================================================
+
+class PreferenciasAIModel(BaseModel):
+    """Configuración de personalización del asistente ('Personalizar AI')."""
+    tono: Literal["cercano", "formal", "academico"] = Field(
+        default="cercano",
+        description="Tono de respuesta del asistente"
+    )
+    nombre_asistente: str = Field(default="VÍA", description="Nombre del asistente")
+    nombre_usuario_preferido: Optional[str] = Field(default="", description="Nombre con el que la IA se dirige al usuario")
+    directivas_extra: Optional[str] = Field(default="", description="Instrucciones personalizadas del usuario")
+    modelo_preferido: str = Field(default="llama3.2", description="Modelo LLM preferido")
+
+
+class UsuarioRegisterModel(BaseModel):
+    """Validación para el registro de nuevos usuarios."""
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_\.\-]+$")
+    email: str = Field(..., min_length=5, max_length=120, pattern=r"^[\w\.\-]+@[\w\.\-]+\.\w+$")
+    password: str = Field(..., min_length=6, max_length=128)
+    nombre: Optional[str] = Field(default="", max_length=100)
+
+
+class UsuarioLoginModel(BaseModel):
+    """Validación para inicio de sesión."""
+    identificador: str = Field(..., min_length=3, description="Username o email del usuario")
+    password: str = Field(..., min_length=1)
+
+
+class PerfilUpdateModel(BaseModel):
+    """Actualización de perfil del usuario (nombre y foto de perfil)."""
+    nombre: Optional[str] = Field(default=None, max_length=100)
+    foto_perfil: Optional[str] = Field(default=None, description="Foto de perfil en formato Base64 o URL")
+
+
+class MensajeChatModel(BaseModel):
+    """Mensaje individual dentro de una conversación histórica."""
+    rol: Literal["user", "assistant", "system"]
+    contenido: str
+    fuentes: List[Dict[str, Any]] = Field(default_factory=list)
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ConversacionModel(BaseModel):
+    """Sesión o historial de conversación en MongoDB."""
+    id: str = Field(..., description="ID único de la conversación")
+    user_id: str = Field(..., description="ID del usuario propietario")
+    titulo: str = Field(default="Nueva conversación")
+    libro_slug: Optional[str] = Field(default="fundacion-las-varillas")
+    mensajes: List[MensajeChatModel] = Field(default_factory=list)
+    creado: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    actualizado: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+

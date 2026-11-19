@@ -1,12 +1,12 @@
 # Tareas 02 — Carga por partes e Ingesta
 
-- [ ] **T1** Fragmentador semántico como función pura (`ingesta.py`).
+- [x] **T1** Fragmentador semántico como función pura (`ingesta.py`).
   - Cubre: B6
   - Se comprueba con: `pytest tests/test_ingesta.py` (títulos `#`, agrupar párrafos ~800-1500 chars, no cortar frases, unir fragmentos cortos).
-- [ ] **T2** Protocolo `Tagger` e implementación `ManualTagger` (`tagger.py`).
+- [x] **T2** Protocolo `Tagger` e implementación `ManualTagger` (`tagger.py`).
   - Cubre: B7
   - Se comprueba con: tests unitarios verificando que si el tagger lanza excepción, los fragmentos se generan sin tags y la carga no falla.
-- [ ] **T3** Gestor de sesiones de carga por partes (`carga_session.py`).
+- [x] **T3** Gestor de sesiones de carga por partes (`carga_session.py`).
   - Cubre: B2, B3, B4, B5
   - Se comprueba con: tests unitarios para recepción de partes idempotente, tope de caracteres (413), consulta de partes faltantes y verificación de hash SHA-256.
 - [ ] **T4** Autenticación por token `X-Admin-Key` en rutas `/api/admin/*` (`web_server.py`).

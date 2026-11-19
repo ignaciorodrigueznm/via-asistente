@@ -719,19 +719,16 @@ from models import LibroModel, FragmentoModel, DetalleLibroResponse
 
 
 def _serializar_entidad(doc):
-    """Convierte campos no serializables como datetime a string ISO."""
+    """Convierte campos no serializables como datetime a string ISO recursivamente en dicts y lists."""
+    if hasattr(doc, "isoformat"):
+        return doc.isoformat()
+    if isinstance(doc, list):
+        return [_serializar_entidad(item) for item in doc]
     if not isinstance(doc, dict):
         return doc
     res = {}
     for k, v in doc.items():
-        if hasattr(v, "isoformat"):
-            res[k] = v.isoformat()
-        elif isinstance(v, dict):
-            res[k] = _serializar_entidad(v)
-        elif isinstance(v, list):
-            res[k] = [_serializar_entidad(item) if isinstance(item, dict) else item for item in v]
-        else:
-            res[k] = v
+        res[k] = _serializar_entidad(v)
     return res
 
 
@@ -847,19 +844,16 @@ async def fundacion_endpoint(request):
 # Endpoints de Biblioteca (Sección 17.2 Contrato Común)
 # ---------------------------------------------------------------------------
 def _serializar_entidad(doc):
-    """Convierte campos no serializables como datetime a string ISO."""
+    """Convierte campos no serializables como datetime a string ISO recursivamente en dicts y lists."""
+    if hasattr(doc, "isoformat"):
+        return doc.isoformat()
+    if isinstance(doc, list):
+        return [_serializar_entidad(item) for item in doc]
     if not isinstance(doc, dict):
         return doc
     res = {}
     for k, v in doc.items():
-        if hasattr(v, "isoformat"):
-            res[k] = v.isoformat()
-        elif isinstance(v, dict):
-            res[k] = _serializar_entidad(v)
-        elif isinstance(v, list):
-            res[k] = [_serializar_entidad(item) if isinstance(item, dict) else item for item in v]
-        else:
-            res[k] = v
+        res[k] = _serializar_entidad(v)
     return res
 
 
@@ -1251,6 +1245,250 @@ async def websocket_chat_endpoint(websocket: WebSocket):
 # Aplicación
 # ---------------------------------------------------------------------------
 # [SRP] Responsabilidad única: crear el montaje de una carpeta estática.
+# ---------------------------------------------------------------------------
+# Endpoints de Autenticación, Perfil de Usuario y Personalización (Spec 06)
+# ---------------------------------------------------------------------------
+from auth_service import hashear_password, verificar_password, crear_token_jwt, decodificar_token_jwt
+from models import UsuarioRegisterModel, UsuarioLoginModel, PerfilUpdateModel, PreferenciasAIModel
+
+
+def _extraer_usuario_autenticado(request) -> Optional[Dict[str, Any]]:
+    """Extrae y valida el usuario desde la cabecera Authorization: Bearer <token>."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:].strip()
+    payload = decodificar_token_jwt(token)
+    if not payload or "user_id" not in payload:
+        return None
+    if book_repo is not None:
+        user = book_repo.obtener_usuario_por_id(payload["user_id"])
+        return user
+    return None
+
+
+async def register_endpoint(request):
+    """POST /api/auth/register: Registra un nuevo usuario en MongoDB."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON inválido"}, status_code=400)
+
+    try:
+        datos = UsuarioRegisterModel.model_validate(body)
+    except Exception as e:
+        return JSONResponse({"error": f"Datos de registro inválidos: {e}"}, status_code=422)
+
+    if book_repo is None:
+        return JSONResponse({"error": "Base de datos no disponible"}, status_code=503)
+
+    # Verificar si el username o email ya existen
+    if book_repo.obtener_usuario_por_username(datos.username):
+        return JSONResponse({"error": f"El nombre de usuario '{datos.username}' ya está registrado"}, status_code=409)
+    if book_repo.obtener_usuario_por_email(datos.email):
+        return JSONResponse({"error": f"El correo '{datos.email}' ya está registrado"}, status_code=409)
+
+    hashed_pw = hashear_password(datos.password)
+    nuevo_usuario = {
+        "username": datos.username,
+        "email": datos.email,
+        "password_hash": hashed_pw,
+        "nombre": datos.nombre or datos.username,
+        "foto_perfil": "",
+        "rol": "usuario",
+        "preferencias_ai": PreferenciasAIModel().model_dump()
+    }
+    user_id = book_repo.crear_usuario(nuevo_usuario)
+    nuevo_usuario["id"] = user_id
+
+    token = crear_token_jwt({"user_id": user_id, "username": datos.username, "rol": "usuario"})
+    usuario_publico = {k: v for k, v in nuevo_usuario.items() if k != "password_hash"}
+
+    return JSONResponse({
+        "mensaje": "Usuario registrado exitosamente",
+        "token": token,
+        "usuario": _serializar_entidad(usuario_publico)
+    }, status_code=201)
+
+
+async def login_endpoint(request):
+    """POST /api/auth/login: Inicia sesión con username/email y contraseña."""
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON inválido"}, status_code=400)
+
+    try:
+        datos = UsuarioLoginModel.model_validate(body)
+    except Exception as e:
+        return JSONResponse({"error": f"Datos de login inválidos: {e}"}, status_code=422)
+
+    if book_repo is None:
+        return JSONResponse({"error": "Base de datos no disponible"}, status_code=503)
+
+    # Buscar usuario por username o email
+    usuario = book_repo.obtener_usuario_por_username(datos.identificador)
+    if not usuario:
+        usuario = book_repo.obtener_usuario_por_email(datos.identificador)
+
+    if not usuario or not verificar_password(datos.password, usuario.get("password_hash", "")):
+        return JSONResponse({"error": "Credenciales inválidas"}, status_code=401)
+
+    token = crear_token_jwt({"user_id": usuario["id"], "username": usuario["username"], "rol": usuario.get("rol", "usuario")})
+    usuario_publico = {k: v for k, v in usuario.items() if k != "password_hash"}
+
+    return JSONResponse({
+        "mensaje": "Inicio de sesión exitoso",
+        "token": token,
+        "usuario": _serializar_entidad(usuario_publico)
+    }, status_code=200)
+
+
+async def get_me_endpoint(request):
+    """GET /api/auth/me: Retorna el perfil y preferencias del usuario autenticado."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    usuario_publico = {k: v for k, v in usuario.items() if k != "password_hash"}
+    return JSONResponse(_serializar_entidad(usuario_publico), status_code=200)
+
+
+async def actualizar_perfil_endpoint(request):
+    """PUT /api/usuario/perfil: Actualiza nombre y/o foto de perfil."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    try:
+        body = await request.json()
+        datos = PerfilUpdateModel.model_validate(body)
+    except Exception as e:
+        return JSONResponse({"error": f"Datos de perfil inválidos: {e}"}, status_code=422)
+
+    cambios = {}
+    if datos.nombre is not None:
+        cambios["nombre"] = datos.nombre
+    if datos.foto_perfil is not None:
+        cambios["foto_perfil"] = datos.foto_perfil
+
+    if book_repo is not None:
+        book_repo.actualizar_perfil_usuario(usuario["id"], cambios)
+        usuario_actualizado = book_repo.obtener_usuario_por_id(usuario["id"])
+        usuario_publico = {k: v for k, v in usuario_actualizado.items() if k != "password_hash"}
+        return JSONResponse({"mensaje": "Perfil actualizado", "usuario": _serializar_entidad(usuario_publico)}, status_code=200)
+
+    return JSONResponse({"error": "Error interno"}, status_code=500)
+
+
+async def actualizar_preferencias_ai_endpoint(request):
+    """PUT /api/usuario/preferencias-ai: Actualiza configuración de 'Personalizar AI'."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    try:
+        body = await request.json()
+        prefs = PreferenciasAIModel.model_validate(body)
+    except Exception as e:
+        return JSONResponse({"error": f"Preferencias inválidas: {e}"}, status_code=422)
+
+    if book_repo is not None:
+        book_repo.actualizar_preferencias_ai(usuario["id"], prefs.model_dump())
+        usuario_actualizado = book_repo.obtener_usuario_por_id(usuario["id"])
+        return JSONResponse({
+            "mensaje": "Preferencias de AI actualizadas",
+            "preferencias_ai": usuario_actualizado.get("preferencias_ai", {})
+        }, status_code=200)
+
+    return JSONResponse({"error": "Error interno"}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints de Conversaciones Pasadas (Historial)
+# ---------------------------------------------------------------------------
+async def listar_conversaciones_endpoint(request):
+    """GET /api/conversaciones: Lista el historial de chats del usuario."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    if book_repo is not None:
+        convs = book_repo.listar_conversaciones_usuario(usuario["id"])
+        resumen = [
+            {
+                "id": c["id"],
+                "titulo": c.get("titulo", "Conversación"),
+                "libro_slug": c.get("libro_slug", ""),
+                "total_mensajes": len(c.get("mensajes", [])),
+                "actualizado": c.get("actualizado")
+            }
+            for c in convs
+        ]
+        return JSONResponse(_serializar_entidad(resumen), status_code=200)
+
+    return JSONResponse([], status_code=200)
+
+
+async def obtener_conversacion_endpoint(request):
+    """GET /api/conversaciones/{id}: Obtiene los mensajes de una conversación."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    conv_id = request.path_params.get("id")
+    if book_repo is not None:
+        conv = book_repo.obtener_conversacion(conv_id, usuario["id"])
+        if not conv:
+            return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+        return JSONResponse(_serializar_entidad(conv), status_code=200)
+
+    return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+
+
+async def guardar_conversacion_endpoint(request):
+    """POST /api/conversaciones: Guarda o actualiza una conversación con sus mensajes."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "JSON inválido"}, status_code=400)
+
+    import uuid
+    conv_id = body.get("id") or f"conv_{uuid.uuid4().hex[:10]}"
+    doc = {
+        "id": conv_id,
+        "user_id": usuario["id"],
+        "titulo": body.get("titulo", "Conversación"),
+        "libro_slug": body.get("libro_slug", "fundacion-las-varillas"),
+        "mensajes": body.get("mensajes", [])
+    }
+    if book_repo is not None:
+        book_repo.guardar_conversacion(doc)
+        return JSONResponse({"mensaje": "Conversación guardada", "id": conv_id}, status_code=200)
+
+    return JSONResponse({"error": "Error interno"}, status_code=500)
+
+
+async def eliminar_conversacion_endpoint(request):
+    """DELETE /api/conversaciones/{id}: Elimina una conversación del usuario."""
+    usuario = _extraer_usuario_autenticado(request)
+    if not usuario:
+        return JSONResponse({"error": "No autorizado o token inválido"}, status_code=401)
+
+    conv_id = request.path_params.get("id")
+    if book_repo is not None:
+        eliminado = book_repo.eliminar_conversacion(conv_id, usuario["id"])
+        if eliminado:
+            return JSONResponse({"mensaje": "Conversación eliminada"}, status_code=200)
+        return JSONResponse({"error": "Conversación no encontrada"}, status_code=404)
+
+    return JSONResponse({"error": "Error interno"}, status_code=500)
+
+
 def _static(name: str) -> Mount:
     # Ruta de la carpeta en disco.
     path = os.path.join(BASE_DIR, name)
@@ -1272,6 +1510,18 @@ routes = [
     Route("/api/libros/{slug}", endpoint=obtener_libro_fragmentos_endpoint, methods=["GET"]),
     # Libro histórico (compatibilidad taller 2.2).
     Route("/api/fundacion", endpoint=fundacion_endpoint, methods=["GET", "POST"]),
+    # Autenticación de Usuarios (Spec 06)
+    Route("/api/auth/register", endpoint=register_endpoint, methods=["POST"]),
+    Route("/api/auth/login", endpoint=login_endpoint, methods=["POST"]),
+    Route("/api/auth/me", endpoint=get_me_endpoint, methods=["GET"]),
+    # Perfil y Personalización
+    Route("/api/usuario/perfil", endpoint=actualizar_perfil_endpoint, methods=["PUT"]),
+    Route("/api/usuario/preferencias-ai", endpoint=actualizar_preferencias_ai_endpoint, methods=["PUT"]),
+    # Historial de Conversaciones
+    Route("/api/conversaciones", endpoint=listar_conversaciones_endpoint, methods=["GET"]),
+    Route("/api/conversaciones", endpoint=guardar_conversacion_endpoint, methods=["POST"]),
+    Route("/api/conversaciones/{id}", endpoint=obtener_conversacion_endpoint, methods=["GET"]),
+    Route("/api/conversaciones/{id}", endpoint=eliminar_conversacion_endpoint, methods=["DELETE"]),
     # Chat sin streaming.
     Route("/api/chat", endpoint=chat_endpoint, methods=["POST"]),
     # Chat con streaming.
