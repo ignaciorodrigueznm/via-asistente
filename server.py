@@ -82,7 +82,7 @@ def obtener_repo_mcp():
         from pymongo import MongoClient
         from config import settings
         from repository import MongoBookRepository
-        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=1500)
+        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=10000)
         client.admin.command("ping")
         db = client[settings.MONGODB_DB]
         _book_repo = MongoBookRepository(db)

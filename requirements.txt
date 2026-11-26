@@ -17,3 +17,7 @@ pydantic>=2.6.0
 # Hash de contraseñas y tokens JWT (Spec 06: autenticación).
 bcrypt>=4.1.0
 PyJWT>=2.8.0
+# Carga de variables desde .env (configuración local y secretos).
+python-dotenv>=1.0
+# Resolución DNS para cadenas mongodb+srv:// (MongoDB Atlas).
+dnspython>=2.6

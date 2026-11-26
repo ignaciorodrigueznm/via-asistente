@@ -16,3 +16,8 @@ Thumbs.db
 
 # Archivos locales del servidor
 *.log
+
+# Secretos y configuración local (nunca commitear)
+.env
+.env.*
+!.env.example

@@ -10,6 +10,11 @@ import secrets
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
+# Carga .env antes de instanciar Settings para que os.getenv vea los valores locales.
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def sanitizar_mongodb_url(url: str) -> str:
     """

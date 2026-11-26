@@ -73,6 +73,9 @@ def sembrar_datos(repo) -> dict:
     # Guardar fragmentos (reemplazo idempotente para este libro)
     repo.guardar_fragmentos(slug_libro, fragmentos_a_guardar)
 
+    # Invalida la caché en memoria del servidor MCP tras publicar el corpus.
+    repo.incrementar_version_corpus()
+
     libros = repo.listar_libros(solo_publicados=False)
     fragmentos = repo.obtener_fragmentos(slug_libro)
 
@@ -93,7 +96,7 @@ def main():
     print(f"[SIEMBRA] Conectando a MongoDB en {url_oculta} (Base de datos: {settings.MONGODB_DB})...")
 
     try:
-        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=4000)
+        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=15000)
         # Forzar chequeo de conexión
         client.admin.command("ping")
         db = client[settings.MONGODB_DB]

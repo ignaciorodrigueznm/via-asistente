@@ -114,3 +114,44 @@ def test_get_api_status_salud(test_app):
     assert "ollama" in data
     assert "tools" in data["mcp"]
     assert "default_model" in data["ollama"]
+
+
+# --- 6. GET /api/fundacion?id=... ---
+def test_get_api_fundacion_por_id(test_app):
+    """GET 6: /api/fundacion?id= devuelve un array con el fragmento exacto del repositorio."""
+    response = test_app.get("/api/fundacion", params={"id": "teoria_1900"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["id"] == "teoria_1900"
+
+
+# --- 7. GET /api/fundacion?all=true ---
+def test_get_api_fundacion_all(test_app):
+    """GET 7: /api/fundacion?all=true devuelve todas las secciones completas."""
+    response = test_app.get("/api/fundacion", params={"all": "true"})
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["id"] == "teoria_1900"
+
+
+# --- 8. GET /api/libros con repositorio vacío ---
+def test_get_api_libros_repo_vacio_devuelve_default():
+    """GET 8: /api/libros sin datos persistidos responde con el libro fundacional por defecto."""
+    web_server.book_repo = FakeRepo()
+    client = TestClient(web_server.app)
+    response = client.get("/api/libros")
+    assert response.status_code == 200
+    libros = response.json()
+    assert len(libros) == 1
+    assert libros[0]["slug"] == "fundacion-las-varillas"
+    assert libros[0]["estado"] == "publicado"
+
+    # El detalle también cae al JSON fundacional cuando el repositorio está vacío.
+    detalle = client.get("/api/libros/fundacion-las-varillas")
+    assert detalle.status_code == 200
+    assert detalle.json()["libro"]["slug"] == "fundacion-las-varillas"
+    assert len(detalle.json()["fragmentos"]) > 0

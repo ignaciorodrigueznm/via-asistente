@@ -117,6 +117,19 @@ Incorporar en MongoDB un sistema completo y persistente de usuarios para VÍA qu
 - La clave `JWT_SECRET_KEY` se lee de `.env` (nunca del repositorio). Si falta, se genera una clave temporal por proceso y las sesiones se invalidan al reiniciar; se avisa en consola sin imprimir la clave.
 - Actualmente el token se conserva en `localStorage`. Para un endurecimiento futuro se recomienda migrar a una cookie `httpOnly` + `Secure` + `SameSite`, y agregar una colección `sesiones` (solo hashes de refresh tokens) si se necesita revocación remota.
 
+## Persistencia en MongoDB Atlas
+- En desarrollo local se admite `MONGODB_URL=mongodb://localhost:27017`; para producción se usa un cluster Atlas con una cadena `mongodb+srv://`.
+- `config.py` carga `.env` con `python-dotenv` antes de instanciar `Settings`. `dnspython` es requisito para resolver las cadenas `mongodb+srv://`.
+- Los timeouts de selección de servidor se ampliaron a 10-15 s para tolerar la latencia de Atlas. Los errores de conexión se imprimen con la URL sanitizada (usuario/contraseña ocultos).
+- `seed_from_json.py` incrementa `meta.version` al finalizar la siembra para invalidar la caché en memoria del servidor MCP.
+- Usuarios, preferencias y conversaciones persisten en Atlas; los JWT siguen siendo stateless y solo requieren que `JWT_SECRET_KEY` se mantenga estable entre reinicios.
+
+## Fix del libro histórico (`/api/fundacion`)
+- Se eliminaron las definiciones duplicadas de `fundacion_endpoint`, `listar_libros_endpoint` y `obtener_libro_fragmentos_endpoint` en `web_server.py`; las rutas usan una única implementación.
+- La lógica de filtros (`?id=`, `?all=true`, `?tema=`, `?q=`, `?buscar=`) quedó dentro de `fundacion_endpoint`.
+- Para `?id=` y `?all=true` se consulta primero `book_repo.obtener_fragmentos("fundacion-las-varillas")`; si no hay datos, se usa la herramienta MCP y, como respaldo, `server.consultar_fundacion_las_varillas(filtro)`.
+- `/api/fundacion?id=...` mantiene una respuesta en array porque `js/via.js` toma `data[0]`.
+
 ## Plan de Pruebas Unitarias
 1. `tests/test_auth.py`:
    - Registro de usuario con hash seguro (verificar que la contraseña nunca se guarda en texto plano).

@@ -76,6 +76,11 @@ if BASE_DIR not in sys.path:
     # ...se agrega al inicio (permite `from server import ...`).
     sys.path.insert(0, BASE_DIR)
 
+# Carga .env antes de leer OLLAMA_URL/MODEL para respetar la configuración local.
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # [OCP/DIP] Configuración por variables de entorno: se cambia el modelo/URL sin tocar código.
 # URL del chat de Ollama.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/chat")
@@ -538,7 +543,7 @@ async def lifespan(app: Starlette):
         from repository import MongoBookRepository
         try:
             settings.validar_mongo()
-            client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=2000)
+            client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=10000)
             client.admin.command("ping")
             db = client[settings.MONGODB_DB]
             book_repo = MongoBookRepository(db)
@@ -546,7 +551,7 @@ async def lifespan(app: Starlette):
         except Exception as e:
             from config import sanitizar_mongodb_url
             from repository import FakeRepo
-            print(f"[VÍA] Aviso Persistencia: No se pudo conectar a MongoDB ({sanitizar_mongodb_url(getattr(settings, 'MONGODB_URL', ''))}): {e}")
+            print(f"[VÍA] Aviso Persistencia: No se pudo conectar a MongoDB ({sanitizar_mongodb_url(getattr(settings, 'MONGODB_URL', ''))}): {sanitizar_mongodb_url(str(e))}")
             print("[VÍA] Activando modo persistencia en memoria (FakeRepo) para permitir pruebas sin MongoDB activo.")
             book_repo = FakeRepo()
     except Exception as err:
@@ -713,54 +718,6 @@ def filtro_desde_query(qp) -> str:
     return filtro
 
 
-# Endpoint del libro histórico (GET/POST).
-async def fundacion_endpoint(request):
-    """
-    GET/POST /api/fundacion — consulta el libro histórico.
-      - sin parámetros: índice de secciones (id, título, etiquetas)
-      - ?id=<id>: una sección completa
-      - ?tema=/q=/buscar=: búsqueda por palabras clave
-      - ?all=true: todas las secciones completas
-    """
-    # Filtro vacío por defecto.
-    filtro = ""
-    # Si es POST...
-    if request.method == "POST":
-        # ...intenta leer el JSON.
-        try:
-            # Lee el cuerpo JSON.
-            body = await request.json()
-            # Extrae el filtro con la función dedicada.
-            filtro = filtro_desde_post(body)
-        # Si falla algo...
-        except Exception:
-            # ...usa filtro vacío.
-            filtro = ""
-    # Si es GET...
-    else:
-        # ...extrae el filtro de la URL con la función dedicada.
-        filtro = filtro_desde_query(request.query_params)
-
-    # Si es GET y no trae parámetros de filtro, devuelve el formato completo (Plan Taller MCP)
-    if request.method == "GET" and not request.query_params:
-        # Prioridad: si book_repo está activo, consultar el libro desde la persistencia
-        if book_repo is not None:
-            try:
-                frags = book_repo.obtener_fragmentos("fundacion-las-varillas")
-                if frags:
-                    full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in frags])
-                    return JSONResponse({"raw": frags, "full_text": full_text}, status_code=200)
-            except Exception:
-                pass
-        
-        data_path = os.path.join(BASE_DIR, "fundacion.json")
-        if os.path.exists(data_path):
-            with open(data_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in data])
-            return JSONResponse({"raw": data, "full_text": full_text}, status_code=200)
-
-
 # ---------------------------------------------------------------------------
 # Endpoints de Biblioteca (Sección 17.2 Contrato Común)
 # ---------------------------------------------------------------------------
@@ -786,11 +743,12 @@ async def listar_libros_endpoint(request):
     if book_repo is not None:
         try:
             libros = book_repo.listar_libros(solo_publicados=True)
-            libros_validados = [
-                LibroModel.model_validate(l).model_dump(mode="json")
-                for l in libros
-            ]
-            return JSONResponse(libros_validados, status_code=200)
+            if libros:
+                libros_validados = [
+                    LibroModel.model_validate(l).model_dump(mode="json")
+                    for l in libros
+                ]
+                return JSONResponse(libros_validados, status_code=200)
         except Exception as e:
             print(f"[API] Error al listar libros de repositorio: {e}")
 
@@ -818,14 +776,15 @@ async def obtener_libro_fragmentos_endpoint(request):
     if book_repo is not None:
         try:
             libro = book_repo.obtener_libro(slug)
-            if not libro or libro.get("estado") != "publicado":
+            if libro and libro.get("estado") != "publicado":
                 return JSONResponse({"error": "Libro no encontrado"}, status_code=404)
-            frags = book_repo.obtener_fragmentos(slug)
-            detalle = DetalleLibroResponse(
-                libro=LibroModel.model_validate(libro),
-                fragmentos=[FragmentoModel.model_validate(f) for f in frags]
-            )
-            return JSONResponse(detalle.model_dump(mode="json"), status_code=200)
+            if libro:
+                frags = book_repo.obtener_fragmentos(slug)
+                detalle = DetalleLibroResponse(
+                    libro=LibroModel.model_validate(libro),
+                    fragmentos=[FragmentoModel.model_validate(f) for f in frags]
+                )
+                return JSONResponse(detalle.model_dump(mode="json"), status_code=200)
         except Exception as e:
             print(f"[API] Error al obtener libro {slug}: {e}")
 
@@ -877,10 +836,10 @@ async def fundacion_endpoint(request):
                 frags = book_repo.obtener_fragmentos("fundacion-las-varillas")
                 if frags:
                     full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in frags])
-                    return JSONResponse({"raw": frags, "full_text": full_text}, status_code=200)
+                    return JSONResponse({"raw": _serializar_entidad(frags), "full_text": full_text}, status_code=200)
             except Exception:
                 pass
-        
+
         data_path = os.path.join(BASE_DIR, "fundacion.json")
         if os.path.exists(data_path):
             with open(data_path, "r", encoding="utf-8") as f:
@@ -888,75 +847,20 @@ async def fundacion_endpoint(request):
             full_text = "\n\n".join([f"## {d.get('titulo', '')}\n{d.get('contenido', '')}" for d in data])
             return JSONResponse({"raw": data, "full_text": full_text}, status_code=200)
 
-
-# ---------------------------------------------------------------------------
-# Endpoints de Biblioteca (Sección 17.2 Contrato Común)
-# ---------------------------------------------------------------------------
-def _serializar_entidad(doc):
-    """Convierte campos no serializables como datetime a string ISO recursivamente en dicts y lists."""
-    if hasattr(doc, "isoformat"):
-        return doc.isoformat()
-    if isinstance(doc, list):
-        return [_serializar_entidad(item) for item in doc]
-    if not isinstance(doc, dict):
-        return doc
-    res = {}
-    for k, v in doc.items():
-        res[k] = _serializar_entidad(v)
-    return res
-
-
-async def listar_libros_endpoint(request):
-    """GET /api/libros: Catálogo de libros publicados (App del usuario)."""
+    # Para ?id= y ?all=true se prioriza la persistencia (no depende del MCP).
     if book_repo is not None:
         try:
-            libros = book_repo.listar_libros(solo_publicados=True)
-            libros_serializados = [_serializar_entidad(l) for l in libros]
-            return JSONResponse(libros_serializados, status_code=200)
+            frags = book_repo.obtener_fragmentos("fundacion-las-varillas")
+            if frags:
+                # ?all=true / "todas": todas las secciones completas.
+                if filtro.lower() in ("todas", "all"):
+                    return JSONResponse(_serializar_entidad(frags), status_code=200)
+                # ?id=<id>: coincidencia exacta con el identificador del fragmento.
+                exactos = [f for f in frags if str(f.get("id", "")) == filtro]
+                if exactos:
+                    return JSONResponse(_serializar_entidad(exactos), status_code=200)
         except Exception as e:
-            print(f"[API] Error al listar libros de repositorio: {e}")
-
-    # Fallback si Mongo no está activo aún: devolver el libro fundacional por defecto
-    libro_default = [{
-        "slug": "fundacion-las-varillas",
-        "titulo": "Origen y Fundación de Las Varillas",
-        "autor": "Comunidad Historiográfica de Las Varillas",
-        "anio": 1900,
-        "fuente_tipo": "secundaria",
-        "estado": "publicado",
-        "resumen": "Debates historiográficos y posturas sobre el origen de Las Varillas.",
-        "temas": ["fundacion", "ferrocarril", "historia local", "origen"]
-    }]
-    return JSONResponse(libro_default, status_code=200)
-
-
-async def obtener_libro_fragmentos_endpoint(request):
-    """GET /api/libros/{slug}: Fragmentos de un libro publicado (App del usuario)."""
-    slug = request.path_params.get("slug")
-    if not slug:
-        return JSONResponse({"error": "slug requerido"}, status_code=400)
-
-    if book_repo is not None:
-        try:
-            libro = book_repo.obtener_libro(slug)
-            if not libro or libro.get("estado") != "publicado":
-                return JSONResponse({"error": "Libro no encontrado"}, status_code=404)
-            frags = book_repo.obtener_fragmentos(slug)
-            return JSONResponse({
-                "libro": _serializar_entidad(libro),
-                "fragmentos": [_serializar_entidad(f) for f in frags]
-            }, status_code=200)
-        except Exception as e:
-            print(f"[API] Error al obtener libro {slug}: {e}")
-
-    # Fallback con fundacion.json si el slug es el fundacional
-    if slug == "fundacion-las-varillas" and os.path.exists(os.path.join(BASE_DIR, "fundacion.json")):
-        with open(os.path.join(BASE_DIR, "fundacion.json"), "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return JSONResponse({"libro": {"slug": slug, "titulo": "Origen y Fundación de Las Varillas"}, "fragmentos": data}, status_code=200)
-
-    return JSONResponse({"error": "Libro no disponible"}, status_code=404)
-
+            print(f"[API] Error al consultar el libro en repositorio: {e}")
 
     # Contexto vacío por defecto.
     contexto = ""
