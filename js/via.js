@@ -1,4 +1,4 @@
-/**
+﻿/**
  * VÍA · Asistente virtual de la historia de Las Varillas
  * Frontend sin dependencias. Toda la lógica técnica (MCP, Ollama, estado del
  * servidor) ocurre en segundo plano: el usuario solo ve la conversación.
@@ -940,8 +940,10 @@
                 bot.skeleton.hidden = true;
                 bot.prose.hidden = false;
               }
-              text += evt.token;
-              if (!raf) raf = requestAnimationFrame(paint);
+              if (text !== evt.token) {
+                text += evt.token;
+                if (!raf) raf = requestAnimationFrame(paint);
+              }
             } else if (evt.type === 'response') {
               if (bot.skeleton && !bot.skeleton.hidden) {
                 bot.skeleton.hidden = true;
